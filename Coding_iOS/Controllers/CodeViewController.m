@@ -34,8 +34,7 @@
     self.view.backgroundColor = kColorTableBG;
     self.title = self.isReadMe? @"README": [[_myCodeFile.path componentsSeparatedByString:@"/"] lastObject];
     
-    {
-        //用webView显示内容
+    {//用webView显示内容
         _webContentView = [[UIWebView alloc] initWithFrame:self.view.bounds];
         _webContentView.delegate = self;
         _webContentView.backgroundColor = [UIColor clearColor];
@@ -95,9 +94,11 @@
         self.myCodeFile = [CodeFile codeFileWithMDStr:data];
         [self refreshCodeViewData];
     }
-    [self.view configBlankPage:EaseBlankPageTypeView hasData:(data != nil) hasError:(error != nil) reloadButtonBlock:^(id sender) {
+    BOOL hasError = (error != nil && error.code != 1204);//depot_has_no_commit
+    [self.view configBlankPage:EaseBlankPageTypeCode hasData:(data != nil) hasError:hasError reloadButtonBlock:^(id sender) {
         [self sendRequest];
     }];
+    self.webContentView.hidden = hasError;
     [self configRightNavBtn];
 }
 
@@ -156,7 +157,7 @@
 
 - (void)rightNavBtnClicked{
     NSMutableArray *actionTitles = @[@"编辑代码", @"查看提交记录", @"退出代码查看"].mutableCopy;
-    if (!self.myCodeFile.can_edit) {
+    if (!self.myCodeFile.can_edit || [self.myCodeFile.file.mode isEqualToString:@"image"]) {
         [actionTitles removeObjectAtIndex:0];
     }
     __weak typeof(self) weakSelf = self;
@@ -166,7 +167,7 @@
 }
 
 - (void)actionSheetClicked:(UIActionSheet *)sheet index:(NSInteger)index{
-    if (!self.myCodeFile.can_edit) {
+    if (!self.myCodeFile.can_edit || [self.myCodeFile.file.mode isEqualToString:@"image"]) {
         index++;
     }
     if (index == 0) {

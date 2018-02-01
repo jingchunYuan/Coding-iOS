@@ -25,20 +25,20 @@
         // Initialization code
         self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         if (!_iconView) {
-            _iconView = [[UIImageView alloc] initWithFrame:CGRectMake(kPaddingLeftWidth, 8, 28, 28)];
+            _iconView = [[UIImageView alloc] initWithFrame:CGRectMake(kPaddingLeftWidth, ([LeftImage_LRTextCell cellHeight] - 33) / 2, 33, 33)];
             [self.contentView addSubview:_iconView];
         }
         if (!_leftLabel) {
-            _leftLabel = [[UILabel alloc] initWithFrame:CGRectMake(60, 7, 80, 30)];
-            _leftLabel.font = [UIFont systemFontOfSize:16];
-            _leftLabel.textColor = kColor222;
+            _leftLabel = [[UILabel alloc] initWithFrame:CGRectMake(60,  ([LeftImage_LRTextCell cellHeight] - 30) / 2, 80, 30)];
+            _leftLabel.font = [UIFont systemFontOfSize:15];
+            _leftLabel.textColor = kColorDark3;
             _leftLabel.textAlignment = NSTextAlignmentLeft;
             [self.contentView addSubview:_leftLabel];
         }
         if (!_rightLabel) {
-            _rightLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(_leftLabel.frame), 7, kScreen_Width - CGRectGetMaxX(_leftLabel.frame) - 35, 30)];
-            _rightLabel.font = [UIFont systemFontOfSize:18];
-            _rightLabel.textColor = kColor999;
+            _rightLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(_leftLabel.frame),  ([LeftImage_LRTextCell cellHeight] - 30) / 2, kScreen_Width - CGRectGetMaxX(_leftLabel.frame) - 35, 30)];
+            _rightLabel.font = [UIFont systemFontOfSize:15];
+            _rightLabel.textColor = kColorDark7;
             _rightLabel.textAlignment = NSTextAlignmentRight;
             [self.contentView addSubview:_rightLabel];
         }
@@ -139,11 +139,17 @@
             default:
                 break;
         }
+        if ((_type == LeftImage_LRTextCellTypeTaskProject && task.project.icon.length > 0) ||
+            (_type == LeftImage_LRTextCellTypeTaskOwner && task.owner.avatar.length > 0)) {
+            _iconView.contentMode = UIViewContentModeScaleAspectFill;
+        }else{
+            _iconView.contentMode = UIViewContentModeCenter;
+        }
     }
 }
 
 
 + (CGFloat)cellHeight{
-    return 44;
+    return 50;
 }
 @end

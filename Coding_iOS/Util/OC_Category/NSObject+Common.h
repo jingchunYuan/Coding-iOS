@@ -7,6 +7,8 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <MBProgressHUD/MBProgressHUD.h>
+#import <SDCAlertView/SDCAlertController.h>
 
 @interface NSObject (Common)
 
@@ -14,7 +16,7 @@
 + (NSString *)tipFromError:(NSError *)error;
 + (BOOL)showError:(NSError *)error;
 + (void)showHudTipStr:(NSString *)tipStr;
-+ (instancetype)showHUDQueryStr:(NSString *)titleStr;
++ (MBProgressHUD *)showHUDQueryStr:(NSString *)titleStr;
 + (NSUInteger)hideHUDQuery;
 + (void)showStatusBarQueryStr:(NSString *)tipStr;
 + (void)showStatusBarSuccessStr:(NSString *)tipStr;

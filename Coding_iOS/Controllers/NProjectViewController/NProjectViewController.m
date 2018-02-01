@@ -27,11 +27,11 @@
 #import "ForkTreeViewController.h"
 
 #import "CodeViewController.h"
-#import "PRListViewController.h"
-#import "MRListViewController.h"
 #import "EaseGitButtonsView.h"
 #import "UserOrProjectTweetsViewController.h"
 #import "FunctionTipsManager.h"
+#import "MRPRListViewController.h"
+#import "WikiViewController.h"
 
 @interface NProjectViewController ()<UITableViewDataSource, UITableViewDelegate>
 @property (nonatomic, strong) UITableView *myTableView;
@@ -68,6 +68,9 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     
@@ -101,7 +104,7 @@
     [[Coding_NetAPIManager sharedManager] request_ProjectDetail_WithObj:_myProject andBlock:^(id data, NSError *error) {
         if (data) {
             weakSelf.myProject = data;
-            weakSelf.navigationItem.rightBarButtonItem = weakSelf.myProject.is_public.boolValue? nil: [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"tweetsBtn_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(tweetsBtnClicked)];
+            weakSelf.navigationItem.rightBarButtonItem = weakSelf.myProject.is_public.boolValue? nil: [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"addBtn_Artboard"] style:UIBarButtonItemStylePlain target:self action:@selector(tweetsBtnClicked)];
             [self refreshGitButtonsView];
             [weakSelf.myTableView reloadData];
         }
@@ -197,14 +200,14 @@
                     if (_myProject.is_public.boolValue) {
                         [cell setImageStr:@"project_item_code" andTitle:@"代码"];
                     }else{
-                        [cell setImageStr:@"project_item_topic" andTitle:@"讨论"];
+                        [cell setImageStr:@"project_item_file" andTitle:@"文件"];
                     }
                     break;
                 case 3:
                     if (_myProject.is_public.boolValue) {
                         [cell setImageStr:@"project_item_member" andTitle:@"成员"];
                     }else{
-                        [cell setImageStr:@"project_item_file" andTitle:@"文件"];
+                        [cell setImageStr:@"project_item_wiki" andTitle:@"Wiki"];
                     }
                     break;
                 case 4:
@@ -229,7 +232,7 @@
         if (tipStr && [ftm needToTip:tipStr]) {
             [cell addTipIcon];
         }
-        [tableView addLineforPlainCell:cell forRowAtIndexPath:indexPath withLeftSpace:50];
+        [tableView addLineforPlainCell:cell forRowAtIndexPath:indexPath withLeftSpace:52];
         return cell;
     }
 }
@@ -284,15 +287,6 @@
 
 - (NSString *)p_TipStrForIndexPath:(NSIndexPath *)indexPath{
     NSString *tipStr = nil;
-    if (indexPath.section == 1) {
-        if (!_myProject.is_public.boolValue && indexPath.row == 3) {
-            tipStr = kFunctionTipStr_File_2V;
-        }
-    }else if (indexPath.section == 2){
-        if (indexPath.row == 1) {
-            tipStr = kFunctionTipStr_LineNote_MRPR;
-        }
-    }
     return tipStr;
 }
 
@@ -306,10 +300,16 @@
             }
         }];
     }
-    ProjectViewController *vc = [[ProjectViewController alloc] init];
-    vc.myProject = self.myProject;
-    vc.curIndex = index;
-    [self.navigationController pushViewController:vc animated:YES];
+    if (index == 3 && _myProject.is_public && !_myProject.is_public.boolValue) {
+        WikiViewController *vc = [WikiViewController new];
+        vc.myProject = self.myProject;
+        [self.navigationController pushViewController:vc animated:YES];
+    }else{
+        ProjectViewController *vc = [[ProjectViewController alloc] init];
+        vc.myProject = self.myProject;
+        vc.curIndex = index;
+        [self.navigationController pushViewController:vc animated:YES];
+    }
 }
 - (void)gotoPro:(Project *)project{
     NProjectViewController *vc = [[NProjectViewController alloc] init];
@@ -324,15 +324,10 @@
 }
 
 - (void)goTo_MR_PR{
-    if (_myProject.is_public.boolValue) {
-        PRListViewController *vc = [[PRListViewController alloc] init];
-        vc.curProject = self.myProject;
-        [self.navigationController pushViewController:vc animated:YES];
-    }else{
-        MRListViewController *vc = [[MRListViewController alloc] init];
-        vc.curProject = self.myProject;
-        [self.navigationController pushViewController:vc animated:YES];
-    }
+    MRPRListViewController *vc = [[MRPRListViewController alloc] init];
+    vc.curProject = self.myProject;
+    vc.isMR = !_myProject.is_public.boolValue;
+    [self.navigationController pushViewController:vc animated:YES];
 }
 
 #pragma mark Git_Btn

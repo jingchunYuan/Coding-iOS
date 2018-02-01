@@ -101,21 +101,23 @@
 }
 
 - (void)customizeTabBarForController {
-    UIImage *backgroundImage = [UIImage imageWithColor:kColorNavBG];
     NSArray *tabBarItemImages = @[@"project", @"task", @"tweet", @"privatemessage", @"me"];
     NSArray *tabBarItemTitles = @[@"项目", @"任务", @"冒泡", @"消息", @"我"];
     NSInteger index = 0;
     for (RDVTabBarItem *item in [[self tabBar] items]) {
         item.titlePositionAdjustment = UIOffsetMake(0, 3);
-        [item setBackgroundSelectedImage:backgroundImage withUnselectedImage:backgroundImage];
         UIImage *selectedimage = [UIImage imageNamed:[NSString stringWithFormat:@"%@_selected",
                                                       [tabBarItemImages objectAtIndex:index]]];
         UIImage *unselectedimage = [UIImage imageNamed:[NSString stringWithFormat:@"%@_normal",
                                                         [tabBarItemImages objectAtIndex:index]]];
         [item setFinishedSelectedImage:selectedimage withFinishedUnselectedImage:unselectedimage];
         [item setTitle:[tabBarItemTitles objectAtIndex:index]];
+        item.badgePositionAdjustment = UIOffsetMake(0, kSafeArea_Bottom / 2);
         index++;
     }
+    [self.tabBar setHeight:49 + kSafeArea_Bottom];
+    [self.tabBar setContentEdgeInsets:UIEdgeInsetsMake(kSafeArea_Bottom / 2, 0, 0, 0)];
+    self.tabBar.backgroundView.backgroundColor = kColorNavBG;
     [self.tabBar addLineUp:YES andDown:NO andColor:kColorCCC];
 }
 

@@ -73,17 +73,6 @@
             make.size.mas_equalTo(_myToolBar.frame.size);
         }];
     }
-    if (_myToolBar) {
-        FunctionTipsManager *ftM = [FunctionTipsManager shareManager];
-        if ([ftM needToTip:kFunctionTipStr_File_2V_Activity]) {
-            EaseToolBarItem *item = [_myToolBar itemOfIndex:0];
-            [item addTipIcon];
-        }
-        if ([ftM needToTip:kFunctionTipStr_File_2V_Version]) {
-            EaseToolBarItem *item = [_myToolBar itemOfIndex:1];
-            [item addTipIcon];
-        }
-    }
     return _myToolBar;
 }
 
@@ -112,7 +101,7 @@
     self.title = [self titleStr];
     [self setupNavigationItem];
 
-    NSURL *fileUrl = [self hasBeenDownload];
+    NSURL *fileUrl = [self diskFileUrl];
     if (!fileUrl) {
         [self showDownloadView];
     }else{
@@ -125,7 +114,7 @@
             [self loadWebView:fileUrl];
         }else if ([QLPreviewController canPreviewItem:fileUrl]) {
             [self showDiskFile:fileUrl];
-        }else {
+        }else if (!_downloadView || _downloadView.hidden) {
             [self showDownloadView];
         }
     }
@@ -143,6 +132,10 @@
         QLPreviewController* preview = [[QLPreviewController alloc] init];
         preview.dataSource = self;
         preview.delegate = self;
+        if ([[[UIDevice currentDevice] systemVersion] compare:@"10.0" options:NSNumericSearch] != NSOrderedAscending) {
+            [self addChildViewController:preview];
+            [preview didMoveToParentViewController:self];
+        }
         [self.view addSubview:preview.view];
         [preview.view mas_makeConstraints:^(MASConstraintMaker *make) {
             make.top.left.right.equalTo(self.view);
@@ -248,7 +241,7 @@
         if ([KxMenu isShowingInView:self.view]) {
             [KxMenu dismissMenu:YES];
         }else{
-            [KxMenu setTitleFont:[UIFont systemFontOfSize:14]];
+            [KxMenu setTitleFont:[UIFont systemFontOfSize:15]];
             [KxMenu setTintColor:[UIColor whiteColor]];
             [KxMenu setLineColor:kColorDDD];
             
@@ -267,7 +260,7 @@
             if (self.fileUrl) {
                 [menuItems addObject:[KxMenuItem menuItem:@"其它应用打开" image:[UIImage imageNamed:@"file_menu_icon_open"] target:self action:@selector(openByOtherApp)]];
             }
-            [menuItems setValue:kColor222 forKey:@"foreColor"];
+            [menuItems setValue:kColorDark4 forKey:@"foreColor"];
             CGRect senderFrame = CGRectMake(kScreen_Width - (kDevice_Is_iPhone6Plus? 30: 26), 0, 0, 0);
             [KxMenu showMenuInView:self.view
                           fromRect:senderFrame
@@ -310,8 +303,8 @@
 - (void)goToShareFileLink{
     __weak typeof(self) weakSelf = self;
     UIActionSheet *actionSheet;
-    if (_curFile.share_url.length > 0) {
-        actionSheet = [UIActionSheet bk_actionSheetCustomWithTitle:@"该链接适用于所有人，无需登录" buttonTitles:@[@"拷贝链接", @"关闭共享"] destructiveTitle:nil cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
+    if (_curFile.share) {
+        actionSheet = [UIActionSheet bk_actionSheetCustomWithTitle:@"该链接适用于所有人，无需登录" buttonTitles:@[@"拷贝链接"] destructiveTitle:@"关闭共享" cancelTitle:@"取消" andDidDismissBlock:^(UIActionSheet *sheet, NSInteger index) {
             if (index == 0) {
                 [weakSelf doCopyShareUrl];
             }else if (index == 1) {
@@ -329,8 +322,8 @@
 }
 
 - (void)doCopyShareUrl{
-    if (_curFile.share_url.length > 0) {
-        [[UIPasteboard generalPasteboard] setString:_curFile.share_url];
+    if (_curFile.share) {
+        [[UIPasteboard generalPasteboard] setString:_curFile.share.url];
         [NSObject showHudTipStr:@"链接已拷贝到粘贴板"];
     }else{
         [NSObject showHudTipStr:@"文件还未打开共享"];
@@ -341,18 +334,18 @@
     __weak typeof(self) weakSelf = self;
     [[Coding_NetAPIManager sharedManager] request_OpenShareOfFile:_curFile andBlock:^(id data, NSError *error) {
         if (data) {
-            weakSelf.curFile.share_url = data;
+            weakSelf.curFile.share = [FileShare instanceWithUrl:data];
             [weakSelf doCopyShareUrl];
         }
     }];
 }
 
 - (void)doCloseShareUrl{
-    NSString *hashStr = [[_curFile.share_url componentsSeparatedByString:@"/"] lastObject];
+    NSString *hashStr = [[_curFile.share.url componentsSeparatedByString:@"/"] lastObject];
     __weak typeof(self) weakSelf = self;
-    [[Coding_NetAPIManager sharedManager] request_CloseShareHash:hashStr andBlock:^(id data, NSError *error) {
+    [[Coding_NetAPIManager sharedManager] request_CloseFileShareHash:hashStr andBlock:^(id data, NSError *error) {
         if (data) {
-            weakSelf.curFile.share_url = nil;
+            weakSelf.curFile.share = nil;
             [NSObject showHudTipStr:@"共享链接已关闭"];
         }
     }];
@@ -366,7 +359,7 @@
 
 - (void)deleteCurFile{
     UIActionSheet *actionSheet;
-    NSURL *fileUrl = [_curFile hasBeenDownload];
+    NSURL *fileUrl = [_curFile diskFileUrl];
     Coding_DownloadTask *cDownloadTask = [_curFile cDownloadTask];
 
     if (fileUrl) {
@@ -412,7 +405,7 @@
         [Coding_FileManager cancelCDownloadTaskForKey:file.storage_key];
     }
     //    删除本地文件
-    NSURL *fileUrl = [file hasBeenDownload];
+    NSURL *fileUrl = [file diskFileUrl];
     NSString *filePath = fileUrl.path;
     NSFileManager *fm = [NSFileManager defaultManager];
     if ([fm fileExistsAtPath:filePath]) {
@@ -507,29 +500,21 @@
 
 #pragma mark EaseToolBarDelegate
 - (void)easeToolBar:(EaseToolBar *)toolBar didClickedIndex:(NSInteger)index{
-    EaseToolBarItem *item = [toolBar itemOfIndex:index];
-    NSString *tipStr = nil;
     if (index == 0) {
         FileActivitiesViewController *vc = [FileActivitiesViewController vcWithFile:_curFile];
         [self.navigationController pushViewController:vc animated:YES];
-        tipStr = kFunctionTipStr_File_2V_Activity;
     }else if (index == 1){
         FileVersionsViewController *vc = [FileVersionsViewController vcWithFile:_curFile];
         [self.navigationController pushViewController:vc animated:YES];
-        tipStr = kFunctionTipStr_File_2V_Version;
-    }
-    if ([[FunctionTipsManager shareManager] needToTip:tipStr]) {
-        [[FunctionTipsManager shareManager] markTiped:tipStr];
-        [item removeTipIcon];
     }
 }
 #pragma mark Data Value
-- (NSURL *)hasBeenDownload{
+- (NSURL *)diskFileUrl{
     NSURL *fileUrl;
     if (self.curVersion) {
-        fileUrl = [self.curVersion hasBeenDownload];
+        fileUrl = [self.curVersion diskFileUrl];
     }else{
-        fileUrl = [self.curFile hasBeenDownload];
+        fileUrl = [self.curFile diskFileUrl];
     }
     return fileUrl;
 }

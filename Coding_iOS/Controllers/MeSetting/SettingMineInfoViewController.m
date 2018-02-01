@@ -21,12 +21,16 @@
 #import "Helper.h"
 #import "UserInfoDetailTagCell.h"
 #import "JDStatusBarNotification.h"
+#import "SettingSkillsViewController.h"
+#import "SettingAccountViewController.h"
 
 @interface SettingMineInfoViewController ()
 @property (strong, nonatomic) UITableView *myTableView;
 @property (strong, nonatomic) User *curUser;
 @property (strong, nonatomic) JobManager *curJobManager;
 @property (strong, nonatomic) TagsManager *curTagsManager;
+
+@property (assign, nonatomic) BOOL isHeaderClosed;
 @end
 
 @implementation SettingMineInfoViewController
@@ -35,7 +39,6 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     self.title = @"个人信息";
-    self.curUser =[Login curLoginUser];
     
     //    添加myTableView
     _myTableView = ({
@@ -51,6 +54,9 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _curJobManager = [[JobManager alloc] init];
@@ -68,6 +74,17 @@
     }];
 }
 
+- (void)viewWillAppear:(BOOL)animated{
+    [super viewWillAppear:animated];
+    self.curUser =[Login curLoginUser];
+}
+
+- (void)setCurUser:(User *)curUser{
+    _curUser = curUser;
+    
+    [self configHeader];
+}
+
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
@@ -78,10 +95,48 @@
     self.view = nil;
 }
 
+- (void)configHeader{
+    BOOL isHeaderNeedToShow = !_isHeaderClosed && (!_curUser.is_phone_validated.boolValue || !_curUser.email_validation.boolValue) && _curUser.vip.integerValue < 2;
+    UIView *headerV = [[UIView alloc] initWithFrame:CGRectMake(0, 0, kScreen_Width, !isHeaderNeedToShow? 1: 44)];
+    headerV.backgroundColor = !isHeaderNeedToShow? [UIColor clearColor]: [UIColor colorWithHexString:@"0xF2DADA"];
+    if (isHeaderNeedToShow) {
+        __weak typeof(self) weakSelf = self;
+        UIButton *closeBtn = [UIButton new];
+        [closeBtn setImage:[UIImage imageNamed:@"button_red_close"] forState:UIControlStateNormal];
+        [closeBtn bk_addEventHandler:^(id sender) {
+            weakSelf.isHeaderClosed = YES;
+            [weakSelf configHeader];
+        } forControlEvents:UIControlEventTouchUpInside];
+        [headerV addSubview:closeBtn];
+        [closeBtn mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.top.bottom.right.equalTo(headerV);
+            make.width.equalTo(closeBtn.mas_height);
+        }];
+        UILabel *tipL = [UILabel labelWithFont:[UIFont systemFontOfSize:14] textColor:[UIColor colorWithHexString:@"0xA64C4B"]];
+        tipL.adjustsFontSizeToFitWidth = YES;
+        tipL.minimumScaleFactor = .5;
+        tipL.userInteractionEnabled = YES;
+        NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithString:@"验证手机或邮箱后完善资料才能升级，去验证"];
+        [attrStr addAttribute:NSUnderlineStyleAttributeName value:@(NSUnderlineStyleSingle) range:[attrStr.string rangeOfString:@"去验证"]];
+        tipL.attributedText = attrStr;
+        [tipL bk_whenTapped:^{
+            SettingAccountViewController *vc = [SettingAccountViewController new];
+            [weakSelf.navigationController pushViewController:vc animated:YES];
+        }];
+        [headerV addSubview:tipL];
+        [tipL mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.centerY.equalTo(headerV);
+            make.left.equalTo(headerV).offset(15);
+            make.right.equalTo(closeBtn.mas_left);
+        }];
+    }
+    self.myTableView.tableHeaderView = headerV;
+}
+
 #pragma mark TableM
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
-    return 3;
+    return 4;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
@@ -91,7 +146,7 @@
             row = 6;
             break;
         case 1:
-            row = 2;
+            row = 4;
             break;
         default:
             row = 1;
@@ -106,9 +161,10 @@
         cell.curUser = _curUser;
         [tableView addLineforPlainCell:cell forRowAtIndexPath:indexPath withLeftSpace:kPaddingLeftWidth];
         return cell;
-    }else if (indexPath.section == 2){
+    }else if (indexPath.section == 2 || indexPath.section == 3){
         UserInfoDetailTagCell *cell = [tableView dequeueReusableCellWithIdentifier:kCellIdentifier_UserInfoDetailTagCell forIndexPath:indexPath];
-        [cell setTagStr:_curUser.tags_str];
+        [cell setTitleStr:indexPath.section == 2? @"开发技能": @"个性标签"];
+        [cell setTagStr:indexPath.section == 2? _curUser.skills_str: _curUser.tags_str];
         [tableView addLineforPlainCell:cell forRowAtIndexPath:indexPath withLeftSpace:kPaddingLeftWidth];
         return cell;
     }else{
@@ -145,9 +201,13 @@
                 break;
             case 1:{
                 if (indexPath.row == 0) {
+                    [cell setTitleStr:@"学历" valueStr:_curUser.degree_str];
+                }else if (indexPath.row == 1){
+                    [cell setTitleStr:@"学校" valueStr:_curUser.school];
+                }else if (indexPath.row == 2){
                     [cell setTitleStr:@"公司" valueStr:_curUser.company];
                 }else{
-                    [cell setTitleStr:@"职位" valueStr:_curUser.job_str];
+                    [cell setTitleStr:@"工作" valueStr:_curUser.job_str];
                 }
             }
                 break;
@@ -163,8 +223,8 @@
     CGFloat cellHeight;
     if (indexPath.section == 0 && indexPath.row == 0) {
         cellHeight = [TitleRImageMoreCell cellHeight];
-    }else if (indexPath.section == 2){
-        cellHeight = [UserInfoDetailTagCell cellHeightWithObj:_curUser.tags_str];
+    }else if (indexPath.section == 2 || indexPath.section == 3){
+        cellHeight = [UserInfoDetailTagCell cellHeightWithObj:indexPath.section == 2? _curUser.skills_str: _curUser.tags_str];
     }else{
         cellHeight = [TitleValueMoreCell cellHeight];
     }
@@ -311,7 +371,44 @@
             break;
         case 1:{
             switch (indexPath.row) {
-                case 0:{//公司
+                case 0:{
+                    //学历
+                    NSArray *list = [User degreeList];
+                    NSNumber *index = @(MIN(list.count, MAX(0, _curUser.degree.integerValue - 1)));
+                    [ActionSheetStringPicker showPickerWithTitle:nil rows:@[list] initialSelection:@[index] doneBlock:^(ActionSheetStringPicker *picker, NSArray *selectedIndex, NSArray *selectedValue) {
+                        NSNumber *preValue = weakSelf.curUser.degree;
+                        weakSelf.curUser.degree = @([selectedIndex.firstObject integerValue] + 1);
+                        [weakSelf.myTableView reloadData];
+                        [[Coding_NetAPIManager sharedManager] request_UpdateUserInfo_WithObj:weakSelf.curUser andBlock:^(id data, NSError *error) {
+                            if (data) {
+                                weakSelf.curUser = data;
+                            }else{
+                                weakSelf.curUser.degree = preValue;
+                            }
+                            [weakSelf.myTableView reloadData];
+                        }];
+                    } cancelBlock:nil origin:self.view];
+                }
+                    break;
+                case 1:{
+                    //学校
+                    SettingTextViewController *vc = [SettingTextViewController settingTextVCWithTitle:@"学校" textValue:_curUser.school  doneBlock:^(NSString *textValue) {
+                        NSString *preValue = weakSelf.curUser.school;
+                        weakSelf.curUser.school = textValue;
+                        [weakSelf.myTableView reloadData];
+                        [[Coding_NetAPIManager sharedManager] request_UpdateUserInfo_WithObj:weakSelf.curUser andBlock:^(id data, NSError *error) {
+                            if (data) {
+                                weakSelf.curUser = data;
+                            }else{
+                                weakSelf.curUser.school = preValue;
+                            }
+                            [weakSelf.myTableView reloadData];
+                        }];
+                    }];
+                    [self.navigationController pushViewController:vc animated:YES];
+                }
+                    break;
+                case 2:{//公司
                     SettingTextViewController *vc = [SettingTextViewController settingTextVCWithTitle:@"公司" textValue:_curUser.company  doneBlock:^(NSString *textValue) {
                         NSString *preValue = weakSelf.curUser.company;
                         weakSelf.curUser.company = textValue;
@@ -333,10 +430,10 @@
                     NSNumber *index = [_curJobManager indexOfJobName:_curUser.job_str];
                     [ActionSheetStringPicker showPickerWithTitle:nil rows:@[jobNameArray] initialSelection:@[index] doneBlock:^(ActionSheetStringPicker *picker, NSArray *selectedIndex, NSArray *selectedValue) {
                         NSString *preValue = weakSelf.curUser.job_str;
-                        NSString *preValueKey = weakSelf.curUser.job;
+                        NSNumber *preValueKey = weakSelf.curUser.job;
 
                         NSNumber *jobIndex = selectedIndex.firstObject;
-                        NSString *job = [NSString stringWithFormat:@"%d", jobIndex.intValue +1];
+                        NSNumber *job = @(jobIndex.intValue +1);
                         NSString *job_str = selectedValue.firstObject;
                         _curUser.job = job;
                         _curUser.job_str = job_str;
@@ -354,6 +451,23 @@
                 }
                     break;
             }
+        }
+            break;
+        case 2:{//开发技能
+            SettingSkillsViewController *vc = [SettingSkillsViewController settingSkillsVCWithDoneBlock:^(NSArray *selectedSkills) {
+                NSArray *preSkills = weakSelf.curUser.skills;
+                weakSelf.curUser.skills = selectedSkills;
+                [weakSelf.myTableView reloadData];
+                [[Coding_NetAPIManager sharedManager] request_UpdateUserInfo_WithObj:weakSelf.curUser andBlock:^(id data, NSError *error) {
+                    if (data) {
+                        weakSelf.curUser = data;
+                    }else{
+                        weakSelf.curUser.skills = preSkills;
+                    }
+                    [weakSelf.myTableView reloadData];
+                }];
+            }];
+            [self.navigationController pushViewController:vc animated:YES];
         }
             break;
         default:{//个性标签

@@ -190,7 +190,7 @@
 }
 
 #pragma upload
-+ (BOOL)writeUploadDataWithName:(NSString *)fileName andAsset:(ALAsset *)asset{
++ (BOOL)writeUploadDataWithName:(NSString *)fileName andAsset:(PHAsset *)asset{
     if (![self createFolder:[self uploadPath]]) {
         return NO;
     }
@@ -201,25 +201,7 @@
     if (!handle) {
         return NO;
     }
-    static const NSUInteger BufferSize = 1024*1024;
-    
-    ALAssetRepresentation *rep = [asset defaultRepresentation];
-    uint8_t *buffer = calloc(BufferSize, sizeof(*buffer));
-    NSUInteger offset = 0, bytesRead = 0;
-    
-    do {
-        @try {
-            bytesRead = [rep getBytes:buffer fromOffset:offset length:BufferSize error:nil];
-            [handle writeData:[NSData dataWithBytesNoCopy:buffer length:bytesRead freeWhenDone:NO]];
-            offset += bytesRead;
-        } @catch (NSException *exception) {
-            free(buffer);
-            
-            return NO;
-        }
-    } while (bytesRead > 0);
-    
-    free(buffer);
+    [handle writeData:asset.loadImageData];
     return YES;
 }
 + (BOOL)writeUploadDataWithName:(NSString *)fileName andImage:(UIImage *)image{
@@ -279,7 +261,6 @@
             [[NSNotificationCenter defaultCenter] postNotificationName:kNotificationUploadCompled object:manager userInfo:@{@"response" : response,
                                                                                                                             @"error" : error}];
         }else if (responseObject) {
-            NSString *block_project_id = [[[[response.URL.absoluteString componentsSeparatedByString:@"/project/"] lastObject] componentsSeparatedByString:@"/"] firstObject];
             responseObject = [responseObject valueForKey:@"data"];
             
             if ([responseObject isKindOfClass:[NSString class]]) {
@@ -288,12 +269,11 @@
                                                                                                                                 @"data" : responseObject}];
             }else{
                 ProjectFile *curFile = [NSObject objectOfClass:@"ProjectFile" fromJSON:responseObject];
-                NSString *block_fileName = [NSString stringWithFormat:@"%@|||%@|||%@", block_project_id, curFile.parent_id.stringValue, curFile.name];
+                NSString *block_fileName = [NSString stringWithFormat:@"%@|||%@|||%@", curFile.project_id.stringValue, curFile.parent_id.stringValue, curFile.name];
                 NSString *block_filePath = [[[manager class] uploadPath] stringByAppendingPathComponent:block_fileName];
                 
                 //移动文件到已下载
-                NSString *diskFileName = [NSString stringWithFormat:@"%@|||%@|||%@|%@", curFile.name, block_project_id, curFile.storage_type, curFile.storage_key];
-                NSString *diskFilePath = [[[manager class] downloadPath] stringByAppendingPathComponent:diskFileName];
+                NSString *diskFilePath = [[[manager class] downloadPath] stringByAppendingPathComponent:curFile.diskFileName];
                 [[NSFileManager defaultManager] moveItemAtPath:block_filePath toPath:diskFilePath error:nil];
                 [manager directoryDidChange:manager.docUploadWatcher];
                 [manager directoryDidChange:manager.docDownloadWatcher];

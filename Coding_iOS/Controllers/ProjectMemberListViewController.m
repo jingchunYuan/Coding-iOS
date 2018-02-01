@@ -64,6 +64,9 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _mySearchBar = ({
@@ -214,8 +217,8 @@
         curMember = [_myMemberArray objectAtIndex:indexPath.row];
     }
     __weak typeof(self) weakSelf = self;
-    cell.curMember = curMember;
     cell.type = _type;
+    cell.curMember = curMember;
     if (_type == ProMemTypeProject) {
         [cell setRightUtilityButtons:[self rightButtonsWithObj:curMember] WithButtonWidth:[MemberCell cellHeight]];//编辑按钮
         cell.delegate = self;

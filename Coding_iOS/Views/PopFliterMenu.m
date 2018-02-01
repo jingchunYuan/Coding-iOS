@@ -29,7 +29,7 @@
         // Initialization code
         self.items = @[@{@"all":@""},@{@"created":@""},@{@"joined":@""},@{@"watched":@""},@{@"stared":@""}].mutableCopy;
         self.pCount=[ProjectCount new];
-        self.showStatus=FALSE;
+        self.showStatus= NO;
         [self setup];
     }
     return self;
@@ -93,6 +93,9 @@
         [tableview registerClass:[UITableViewCell class] forCellReuseIdentifier:@"UITableViewCell"];
         tableview.tableFooterView=[UIView new];
         tableview.separatorStyle=UITableViewCellSeparatorStyleNone;
+        tableview.estimatedRowHeight = 0;
+        tableview.estimatedSectionHeaderHeight = 0;
+        tableview.estimatedSectionFooterHeight = 0;
         tableview;
     });
     [self addSubview:_tableview];
@@ -111,7 +114,7 @@
 
 #pragma mark -- event & action
 - (void)showMenuAtView:(UIView *)containerView {
-    _showStatus=TRUE;
+    _showStatus= YES;
     [containerView addSubview:self];
     [_realTimeBlur showBlurViewAtView:self];
     [_tableview reloadData];
@@ -123,7 +126,7 @@
     if ([[presentView.subviews firstObject] isMemberOfClass:NSClassFromString(@"RDVTabBar")]) {
         [presentView bringSubviewToFront:[presentView.subviews firstObject]];
     }
-    _showStatus=FALSE;
+    _showStatus= NO;
     [_realTimeBlur disMiss];
 }
 

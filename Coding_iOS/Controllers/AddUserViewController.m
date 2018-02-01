@@ -49,6 +49,9 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _mySearchBar = ({
@@ -138,7 +141,7 @@
         UILabel *label = [UILabel labelWithSystemFontSize:13 textColorHexString:leftNum > 0? @"0x999999": @"0xF34A4A"];
         label.backgroundColor = self.view.backgroundColor;
         label.textAlignment = NSTextAlignmentCenter;
-        label.text = leftNum > 0? [NSString stringWithFormat:@"你还可以添加 %lu 个项目成员", leftNum]: @"已到达到成员最大数，不能再继续选择成员！";
+        label.text = leftNum > 0? [NSString stringWithFormat:@"你还可以添加 %lu 个项目成员", leftNum]: @"已达到成员最大数，不能再继续选择成员！";
         return label;
     }
 }

@@ -15,9 +15,7 @@
 #import "JDStatusBarNotification.h"
 #import "Login.h"
 #import "AppDelegate.h"
-#import "MBProgressHUD+Add.h"
 #import "CodingNetAPIClient.h"
-#import <SDCAlertView/SDCAlertController.h>
 #import "Coding_NetAPIManager.h"
 
 @implementation NSObject (Common)
@@ -43,7 +41,11 @@
             if ([error.userInfo objectForKey:@"NSLocalizedDescription"]) {
                 tipStr = [error.userInfo objectForKey:@"NSLocalizedDescription"];
             }else{
-                [tipStr appendFormat:@"ErrorCode%ld", (long)error.code];
+                if (error.code == 3840) {//Json 解析失败
+                    [tipStr appendFormat:@"服务器返回数据格式有误"];
+                }else{
+                    [tipStr appendFormat:@"错误代码 %ld", (long)error.code];
+                }
             }
         }
         return tipStr;
@@ -70,7 +72,7 @@
         [hud hide:YES afterDelay:1.0];
     }
 }
-+ (instancetype)showHUDQueryStr:(NSString *)titleStr{
++ (MBProgressHUD *)showHUDQueryStr:(NSString *)titleStr{
     titleStr = titleStr.length > 0? titleStr: @"正在获取数据...";
     MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:kKeyWindow animated:YES];
     hud.tag = kHUDQueryViewTag;
@@ -143,7 +145,7 @@
     
     [CodingNetAPIClient changeJsonClient];
     
-    [[UINavigationBar appearance] setBackgroundImage:[UIImage imageWithColor:[self baseURLStrIsProduction]? kColorNavBG: kColorBrandGreen] forBarMetrics:UIBarMetricsDefault];
+    [[UINavigationBar appearance] setBackgroundImage:[UIImage imageWithColor:[self baseURLStrIsProduction]? kColorNavBG: kColorActionYellow] forBarMetrics:UIBarMetricsDefault];
 }
 
 #pragma mark File M
@@ -357,7 +359,7 @@
     NSString *path = @"api/request_valid";
     NSURL *imageURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@api/getCaptcha?type=%@", [NSObject baseURLStr], params[@"type"]]];
     //UI
-    SDCAlertController *alertV = [SDCAlertController alertControllerWithTitle:@"提示" message:@"亲，您操作这么快，不会是机器人吧？\n来，输个验证码先？" preferredStyle:SDCAlertControllerStyleAlert];
+    SDCAlertController *alertV = [SDCAlertController alertControllerWithTitle:@"提示" message:@"请输入图片验证码" preferredStyle:SDCAlertControllerStyleAlert];
     UITextField *textF = [UITextField new];
     textF.layer.sublayerTransform = CATransform3DMakeTranslation(5, 0, 0);
     textF.backgroundColor = [UIColor whiteColor];
@@ -391,7 +393,7 @@
     }];
     __weak typeof(alertV) weakAlertV = alertV;
     [alertV addAction:[SDCAlertAction actionWithTitle:@"取消" style:SDCAlertActionStyleCancel handler:nil]];
-    [alertV addAction:[SDCAlertAction actionWithTitle:@"还真不是" style:SDCAlertActionStyleDefault handler:nil]];
+    [alertV addAction:[SDCAlertAction actionWithTitle:@"确定" style:SDCAlertActionStyleDefault handler:nil]];
     alertV.shouldDismissBlock =  ^BOOL (SDCAlertAction *action){
         BOOL shouldDismiss = [action.title isEqualToString:@"取消"];
         if (!shouldDismiss) {

@@ -103,7 +103,7 @@
     return img;
 }
 
-+ (UIImage *)imageWithFileType:(NSString *)fileType{
++(NSString *)p_iconNameWithFileType:(NSString *)fileType{
     fileType = [fileType lowercaseString];
     NSString *iconName;
     //XXX(s)
@@ -165,14 +165,24 @@
     else{
         iconName = @"icon_file_unknown";
     }
-    return [UIImage imageNamed:iconName];
+    return iconName;
+}
+
++ (UIImage *)imageWithFileType:(NSString *)fileType{
+    return [UIImage imageNamed:[self p_iconNameWithFileType:fileType]];
+}
+
++ (UIImage *)big_imageWithFileType:(NSString *)fileType{
+    return [UIImage imageNamed:[NSString stringWithFormat:@"%@_big", [self p_iconNameWithFileType:fileType]]];
 }
 
 - (NSData *)dataSmallerThan:(NSUInteger)dataLength{
-    NSData *data = UIImageJPEGRepresentation(self, 1.0);
+    CGFloat compressionQuality = 1.0;
+    NSData *data = UIImageJPEGRepresentation(self, compressionQuality);
     while (data.length > dataLength) {
-        UIImage *image = [UIImage imageWithData:data];
-        data = UIImageJPEGRepresentation(image, 0.7);
+        CGFloat mSize = data.length / (1024 * 1000.0);
+        compressionQuality *= pow(0.7, log(mSize)/ log(3));//大概每压缩 0.7，mSize 会缩小为原来的三分之一
+        data = UIImageJPEGRepresentation(self, compressionQuality);
     }
     return data;
 }

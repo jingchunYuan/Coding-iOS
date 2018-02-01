@@ -71,6 +71,9 @@ static NSString *const kValueKey = @"kValueKey";
                 tableView.contentInset = insets;
                 tableView.scrollIndicatorInsets = insets;
             }
+            tableView.estimatedRowHeight = 0;
+            tableView.estimatedSectionHeaderHeight = 0;
+            tableView.estimatedSectionFooterHeight = 0;
             tableView;
         });
         if (projects.type < ProjectsTypeToChoose || projects.type == ProjectsTypeAllPublic) {
@@ -82,6 +85,8 @@ static NSString *const kValueKey = @"kValueKey";
                 searchBar.delegate = self;
                 [searchBar sizeToFit];
                 [searchBar setPlaceholder:@"项目名称/创建人"];
+                [searchBar setPlaceholderColor:kColorDarkA];
+                [searchBar setSearchIcon:[UIImage imageNamed:@"icon_search_searchbar"]];
                 searchBar;
             });
             _myTableView.tableHeaderView = _mySearchBar;
@@ -126,6 +131,8 @@ static NSString *const kValueKey = @"kValueKey";
         _mySearchBar = ({
             MainSearchBar *searchBar = [MainSearchBar new];
             [searchBar setPlaceholder:@"搜索"];
+            [searchBar setPlaceholderColor:kColorDarkA];
+            [searchBar setSearchIcon:[UIImage imageNamed:@"icon_search_searchbar"]];
             searchBar.delegate = self;
             [searchBar sizeToFit];
             [searchBar.scanBtn addTarget:self action:@selector(scanBtnClicked) forControlEvents:UIControlEventTouchUpInside];

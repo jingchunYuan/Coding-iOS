@@ -400,8 +400,8 @@ typedef enum {
     if (!_menuItems.count)
         return nil;
  
-    const CGFloat kMinMenuItemHeight = 44.f;
-    const CGFloat kMinMenuItemWidth = 44.f;
+    const CGFloat kMinMenuItemHeight = 50.f;
+    const CGFloat kMinMenuItemWidth = 50.f;
     const CGFloat kMarginX = 6.f;
     const CGFloat kMarginY = 0.f;
     
@@ -444,6 +444,7 @@ typedef enum {
     }
        
     maxItemWidth  = MAX(maxItemWidth, kMinMenuItemWidth);
+    maxItemWidth = MAX(maxItemWidth, maxItemWidth * (kScreen_Width/ 375));
     maxItemHeight = MAX(maxItemHeight, kMinMenuItemHeight);
 
     const CGFloat titleX = kMarginX * 2 + maxImageWidth + titleImagePadding;
@@ -537,6 +538,8 @@ typedef enum {
         }
         
         if (itemNum < _menuItems.count - 1) {
+            [itemView addLineUp:NO andDown:YES andColor:[KxMenu lineColor]];
+            itemView.clipsToBounds = YES;
             itemY += 2;
         }
         itemY += maxItemHeight;
@@ -921,7 +924,8 @@ static UIFont *gTitleFont;
 + (UIColor *) overlayColor
 {
     if (!gOverlayColor) {
-        gOverlayColor = [UIColor colorWithWhite:0 alpha:0.5];
+        gOverlayColor = [UIColor colorWithHexString:@"272C33" andAlpha:.5];
+//        [UIColor colorWithWhite:0 alpha:0.5];
     }
     return gOverlayColor;
 }

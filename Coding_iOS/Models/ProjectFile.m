@@ -22,7 +22,7 @@
     file.project_name = [_project_name copy];
     file.diskFileName = [_diskFileName copy];
     file.owner = [_owner copy];
-    file.share_url = [_share_url copy];
+    file.share = [FileShare instanceWithUrl:_share.url];
     file.title = [_title copy];
     file.storage_type = [_storage_type copy];
     file.storage_key = [_storage_key copy];
@@ -44,7 +44,6 @@
     file.path=[_path copy];
     return file;
 }
-
 
 +(ProjectFile *)fileWithFileId:(NSNumber *)fileId andProjectId:(NSNumber *)project_id{
     ProjectFile *file = [[ProjectFile alloc] init];
@@ -79,7 +78,7 @@
 
 - (DownloadState)downloadState{
     DownloadState state = DownloadStateDefault;
-    if ([self hasBeenDownload]) {
+    if ([self diskFileUrl]) {
         state = DownloadStateDownloaded;
     }else{
         Coding_DownloadTask *cDownloadTask = [self cDownloadTask];
@@ -103,16 +102,27 @@
 
 - (NSString *)diskFileName{
     if (!_diskFileName) {
-        _diskFileName = [NSString stringWithFormat:@"%@|||%@|||%@|%@", _name, _project_id.stringValue, _storage_type, _storage_key];
+        _diskFileName = [NSString stringWithFormat:@"%@|||%@|||%@|%@", _name, _project_id.stringValue, _storage_type, self.storage_key_for_disk];
     }
     return _diskFileName;
+}
+
+- (NSString *)storage_key_for_disk{
+    NSArray *fileNameCom = [_name componentsSeparatedByString:@"."];
+    NSMutableArray *storage_keyCom = [_storage_key componentsSeparatedByString:@"."].mutableCopy;
+    if (fileNameCom.count > 1 && storage_keyCom.count > 0 && ![fileNameCom.lastObject isEqualToString:storage_keyCom.lastObject]) {
+        [storage_keyCom addObject:fileNameCom.lastObject];
+        return [storage_keyCom componentsJoinedByString:@"."];
+    }else{
+        return _storage_key;
+    }
 }
 
 - (Coding_DownloadTask *)cDownloadTask{
     return [Coding_FileManager cDownloadTaskForKey:_storage_key];
 }
-- (NSURL *)hasBeenDownload{
-    return [Coding_FileManager diskDownloadUrlForKey:_storage_key];
+- (NSURL *)diskFileUrl{
+    return [Coding_FileManager diskDownloadUrlForKey:self.storage_key] ?: [Coding_FileManager diskDownloadUrlForKey:self.storage_key_for_disk];
 }
 
 - (NSString *)toDeletePath{

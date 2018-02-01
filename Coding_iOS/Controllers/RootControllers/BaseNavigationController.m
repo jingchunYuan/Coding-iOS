@@ -25,14 +25,23 @@
     //添新
     if (!_navLineV) {
         _navLineV = [[UIView alloc]initWithFrame:CGRectMake(0, 44, kScreen_Width, 1.0/ [UIScreen mainScreen].scale)];
-        _navLineV.backgroundColor = kColorCCC;
+        _navLineV.backgroundColor = kColorD8DDE4;
         [self.navigationBar addSubview:_navLineV];
     }
 }
 
-- (void)hideBorderInView:(UIView *)view{
+- (void)hideNavBottomLine{
+    [self hideBorderInView:self.navigationBar];
+    if (_navLineV) {
+        _navLineV.hidden = YES;
+    }
+}
 
-    
+- (void)showNavBottomLine{
+    _navLineV.hidden = NO;
+}
+
+- (void)hideBorderInView:(UIView *)view{
     if ([view isKindOfClass:[UIImageView class]]
         && view.frame.size.height <= 1) {
         view.hidden = YES;

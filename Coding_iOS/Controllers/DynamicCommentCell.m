@@ -18,11 +18,13 @@
 
 #import "MJPhotoBrowser.h"
 #import "FileComment.h"
+#import "HtmlMediaViewController.h"
 
 @interface DynamicCommentCell ()<UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout>
 @property (strong, nonatomic) UIImageView *ownerIconView, *timeLineView, *contentBGView;
 @property (strong, nonatomic) UILabel *timeLabel;
 @property (strong, nonatomic) UICustomCollectionView *imageCollectionView;
+@property (strong, nonatomic) UIButton *detailBtn;
 
 @end
 
@@ -34,7 +36,7 @@
     if (self) {
         // Initialization code
         self.selectionStyle = UITableViewCellSelectionStyleNone;
-        CGFloat curBottomY = 15;
+        CGFloat curBottomY = 25;
         if (!_contentBGView) {
             _contentBGView = [UIImageView new];
             _contentBGView.image = [[UIImage imageNamed:@"comment_bg"] resizableImageWithCapInsets:UIEdgeInsetsMake(35, 15, 5, 5)];
@@ -63,7 +65,7 @@
         }
         if (!_contentLabel) {
             _contentLabel = [[UITTTAttributedLabel alloc] initWithFrame:CGRectMake(kTaskCommentCell_LeftContentPading, curBottomY, kTaskCommentCell_ContentWidth, 30)];
-            _contentLabel.textColor = kColor222;
+            _contentLabel.textColor = kColorDark3;
             _contentLabel.font = kTaskCommentCell_FontContent;
             _contentLabel.linkAttributes = kLinkAttributes;
             _contentLabel.activeLinkAttributes = kLinkAttributesActive;
@@ -72,7 +74,7 @@
         }
         if (!_timeLabel) {
             _timeLabel = [[UILabel alloc] initWithFrame:CGRectMake(kTaskCommentCell_LeftContentPading, 0, kTaskCommentCell_ContentWidth, 20)];
-            _timeLabel.textColor = kColor999;
+            _timeLabel.textColor = kColorDark7;
             _timeLabel.font = [UIFont systemFontOfSize:12];
             [self.contentView addSubview:_timeLabel];
         }
@@ -90,10 +92,27 @@
             }
         }
         [_contentBGView mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.edges.equalTo(self.contentView).insets(UIEdgeInsetsMake(5, 60- 7, 5, 20));
+            make.edges.equalTo(self.contentView).insets(UIEdgeInsetsMake(10, 60- 7, 10, 20));
         }];
+        if (!_detailBtn) {
+            _detailBtn = [UIButton buttonWithTitle:@"查看详情" titleColor:kColorBrandGreen];
+            _detailBtn.titleLabel.font = [UIFont systemFontOfSize:12];
+            [_detailBtn addTarget:self action:@selector(goToDetail) forControlEvents:UIControlEventTouchUpInside];
+            [self.contentView addSubview:_detailBtn];
+            [_detailBtn mas_makeConstraints:^(MASConstraintMaker *make) {
+                make.size.mas_equalTo(CGSizeMake(60, 30));
+                make.right.equalTo(_contentBGView).offset(-10);
+                make.centerY.equalTo(_timeLabel);
+            }];
+        }
+        _timeLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
     }
     return self;
+}
+
+- (void)goToDetail{
+    HtmlMediaViewController *vc = [HtmlMediaViewController instanceWithHtmlMedia:self.curComment.htmlMedia title:[NSString stringWithFormat:@"%@ 的评论", self.curComment.author.name]];
+    [BaseViewController goToVC:vc];
 }
 
 - (void)setCurComment:(ProjectLineNote *)curComment{
@@ -101,7 +120,8 @@
     if (!_curComment) {
         return;
     }
-    CGFloat curBottomY = 15;
+    _detailBtn.hidden = ![self.curComment.htmlMedia needToShowDetail];
+    CGFloat curBottomY = 25;
     [_ownerIconView sd_setImageWithURL:[_curComment.author.avatar urlImageWithCodePathResizeToView:_ownerIconView] placeholderImage:kPlaceholderMonkeyRoundWidth(33.0)];
     NSString *contentStr = _curComment.content;
     [_contentLabel setLongString:contentStr withFitWidth:kTaskCommentCell_ContentWidth];
@@ -121,6 +141,7 @@
     }
     curBottomY += [DynamicCommentCell imageCollectionViewHeightWithCount:imagesCount];
     [_timeLabel setY:curBottomY];
+    _timeLabel.width = _detailBtn.hidden? kTaskCommentCell_ContentWidth: kTaskCommentCell_ContentWidth - 60;
     _timeLabel.text = [NSString stringWithFormat:@"%@ 发布于 %@", _curComment.author.name,[_curComment.created_at stringDisplay_HHmm]];
 }
 
@@ -143,9 +164,9 @@
     if ([obj isKindOfClass:[ProjectLineNote class]]) {
         ProjectLineNote *curComment = (ProjectLineNote *)obj;
         NSString *contentStr = curComment.content;
-        cellHeight += 10 +[contentStr getHeightWithFont:kTaskCommentCell_FontContent constrainedToSize:CGSizeMake(kTaskCommentCell_ContentWidth, CGFLOAT_MAX)] + 5 +20 +10;
+        cellHeight += 20 +[contentStr getHeightWithFont:kTaskCommentCell_FontContent constrainedToSize:CGSizeMake(kTaskCommentCell_ContentWidth, CGFLOAT_MAX)] + 5 +20 +10;
         cellHeight += [self imageCollectionViewHeightWithCount:curComment.htmlMedia.imageItems.count];
-        cellHeight += 10;
+        cellHeight += 20;
     }
     return cellHeight;
 }

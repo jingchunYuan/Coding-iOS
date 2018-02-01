@@ -32,7 +32,7 @@
 - (CGFloat)getWidthWithFont:(UIFont *)font constrainedToSize:(CGSize)size;
 -(BOOL)containsEmoji;
 
-- (NSString *)emotionMonkeyName;
+- (NSString *)emotionSpecailName;
 
 + (NSString *)sizeDisplayWithByte:(CGFloat)sizeOfByte;
 
@@ -48,6 +48,7 @@
 - (BOOL)isPhoneNo;
 - (BOOL)isEmail;
 - (BOOL)isGK;
+- (BOOL)isFileName;
 
 - (NSRange)rangeByTrimmingLeftCharactersInSet:(NSCharacterSet *)characterSet;
 - (NSRange)rangeByTrimmingRightCharactersInSet:(NSCharacterSet *)characterSet;

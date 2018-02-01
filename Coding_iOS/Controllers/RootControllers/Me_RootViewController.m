@@ -31,22 +31,27 @@
 #import "TeamListViewController.h"
 #import "MeDisplayViewController.h"
 
+#import "FunctionTipsManager.h"
+#import "ShopViewController.h"
+
 @interface Me_RootViewController ()<UITableViewDataSource, UITableViewDelegate>
 @property (strong, nonatomic) UITableView *myTableView;
 @property (nonatomic, strong) ODRefreshControl *refreshControl;
 
 @property (strong, nonatomic) User *curUser;
 @property (strong, nonatomic) UserServiceInfo *curServiceInfo;
+
+@property (assign, nonatomic) BOOL isHeaderClosed;
 @end
 
 @implementation Me_RootViewController
 - (void)viewDidLoad{
     [super viewDidLoad];
     // Do any additional setup after loading the view.
-        self.title = @"我";
-        _curUser = [Login curLoginUser]? [Login curLoginUser]: [User userWithGlobalKey:@""];
-        [self.navigationItem setRightBarButtonItem:[[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"addUserBtn_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(goToAddUser)] animated:NO];
-    
+    self.title = @"我";
+    _curUser = [Login curLoginUser]? [Login curLoginUser]: [User userWithGlobalKey:@""];
+    [self.navigationItem setRightBarButtonItem:[[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"addUserBtn_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(goToAddUser)] animated:NO];
+
     //    添加myTableView
     _myTableView = ({
         UITableView *tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStyleGrouped];
@@ -64,11 +69,15 @@
         UIEdgeInsets insets = UIEdgeInsetsMake(0, 0, CGRectGetHeight(self.rdv_tabBarController.tabBar.frame), 0);
         tableView.contentInset = insets;
         tableView.scrollIndicatorInsets = insets;
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     
     _refreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
     [_refreshControl addTarget:self action:@selector(refresh) forControlEvents:UIControlEventValueChanged];
+    [self configHeader];
 }
 
 - (void)viewWillAppear:(BOOL)animated{
@@ -85,6 +94,7 @@
                 if (dataS) {
                     weakSelf.curServiceInfo = dataS;
                 }
+                [weakSelf configHeader];
                 [weakSelf.myTableView reloadData];
                 [weakSelf.refreshControl endRefreshing];
             }];
@@ -94,13 +104,51 @@
     }];
 }
 
+- (void)configHeader{
+    BOOL isHeaderNeedToShow = !_isHeaderClosed && !_curUser.isUserInfoCompleted && _curUser.vip.integerValue < 2;
+    UIView *headerV = [[UIView alloc] initWithFrame:CGRectMake(0, 0, kScreen_Width, !isHeaderNeedToShow? 1: 44)];
+    headerV.backgroundColor = !isHeaderNeedToShow? [UIColor clearColor]: [UIColor colorWithHexString:@"0xF7F4D6"];
+    if (isHeaderNeedToShow) {
+        __weak typeof(self) weakSelf = self;
+        UIButton *closeBtn = [UIButton new];
+        [closeBtn setImage:[UIImage imageNamed:@"button_tip_close"] forState:UIControlStateNormal];
+        [closeBtn bk_addEventHandler:^(id sender) {
+            weakSelf.isHeaderClosed = YES;
+            [weakSelf configHeader];
+        } forControlEvents:UIControlEventTouchUpInside];
+        [headerV addSubview:closeBtn];
+        [closeBtn mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.top.bottom.right.equalTo(headerV);
+            make.width.equalTo(closeBtn.mas_height);
+        }];
+        UILabel *tipL = [UILabel labelWithFont:[UIFont systemFontOfSize:14] textColor:[UIColor colorWithHexString:@"0x836E33"]];
+        tipL.adjustsFontSizeToFitWidth = YES;
+        tipL.minimumScaleFactor = .5;
+        tipL.userInteractionEnabled = YES;
+        NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithString:@"完善个人信息，即可升级成为银牌会员。去完善"];
+        [attrStr addAttribute:NSUnderlineStyleAttributeName value:@(NSUnderlineStyleSingle) range:[attrStr.string rangeOfString:@"去完善"]];
+        tipL.attributedText = attrStr;
+        [tipL bk_whenTapped:^{
+            SettingMineInfoViewController *vc = [SettingMineInfoViewController new];
+            [weakSelf.navigationController pushViewController:vc animated:YES];
+        }];
+        [headerV addSubview:tipL];
+        [tipL mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.centerY.equalTo(headerV);
+            make.left.equalTo(headerV).offset(15);
+            make.right.equalTo(closeBtn.mas_left);
+        }];
+    }
+    self.myTableView.tableHeaderView = headerV;
+}
+
 #pragma mark Table M
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
     return 3;
 }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
     NSInteger row = (section ==0? 2:
-                     section == 1? 1:
+                     section == 1? 2:
                      4);
     return row;
 }
@@ -128,11 +176,21 @@
         }
     }else{
         UserInfoIconCell *cell = [tableView dequeueReusableCellWithIdentifier:kCellIdentifier_UserInfoIconCell forIndexPath:indexPath];
-        (indexPath.section == 1? [cell setTitle:@"我的码币" icon:@"user_info_point"]:
+        (indexPath.section == 1? (indexPath.row == 0? [cell setTitle:@"我的码币" icon:@"user_info_point"]:
+                                  [cell setTitle:@"商城" icon:@"user_info_shop"]):
          indexPath.row == 0? [cell setTitle:@"本地文件" icon:@"user_info_file"]:
          indexPath.row == 1? [cell setTitle:@"帮助与反馈" icon:@"user_info_help"]:
          indexPath.row == 2? [cell setTitle:@"设置" icon:@"user_info_setup"]:
          [cell setTitle:@"关于我们" icon:@"user_info_about"]);
+        if (indexPath.section == 1 && indexPath.row == 1 && [[FunctionTipsManager shareManager] needToTip:kFunctionTipStr_Me_Shop]) {
+//            cell.accessoryType = UITableViewCellAccessoryNone;
+            CGFloat pointX = kScreen_Width - 40;
+            CGFloat pointY = [UserInfoIconCell cellHeight]/2;
+            [cell.contentView addBadgeTip:kBadgeTipStr withCenterPosition:CGPointMake(pointX, pointY)];
+        }else{
+//            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+            [cell.contentView removeBadgeTips];
+        }
         [tableView addLineforPlainCell:cell forRowAtIndexPath:indexPath withLeftSpace:kPaddingLeftWidth];
         return cell;
     }
@@ -152,7 +210,7 @@
     return 1.0/[UIScreen mainScreen].scale;
 }
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section{
-    return 20;
+    return 15;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section{
@@ -168,7 +226,11 @@
             [self goToMeDisplay];
         }
     }else if (indexPath.section == 1){//我的码币
-        [self goToPoint];
+        if (indexPath.row == 0) {
+            [self goToPoint];
+        }else{
+            [self goToShop];
+        }
     }else{
         if (indexPath.row == 0) {//本地文件
             [self goToLocalFolders];
@@ -197,6 +259,15 @@
 - (void)goToPoint{
     PointRecordsViewController *vc = [PointRecordsViewController new];
     [self.navigationController pushViewController:vc animated:YES];
+}
+
+- (void)goToShop{
+    if ([[FunctionTipsManager shareManager] needToTip:kFunctionTipStr_Me_Shop]) {
+        [[FunctionTipsManager shareManager] markTiped:kFunctionTipStr_Me_Shop];
+        [self.myTableView reloadData];
+    }
+    ShopViewController *shopvc = [ShopViewController new];
+    [self.navigationController pushViewController:shopvc animated:YES];
 }
 
 - (void)goToSetting{

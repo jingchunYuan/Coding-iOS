@@ -20,4 +20,10 @@
 
 + (instancetype)labelWithFont:(UIFont *)font textColor:(UIColor *)textColor;
 + (instancetype)labelWithSystemFontSize:(CGFloat)fontSize textColorHexString:(NSString *)stringToConvert;
+
+- (void)colorTextWithColor:(UIColor *)color range:(NSRange)range;
+- (void)fontTextWithFont:(UIFont *)font range:(NSRange)range;
+
+- (void)ea_setText:(NSString*)text lineSpacing:(CGFloat)lineSpacing;
+
 @end

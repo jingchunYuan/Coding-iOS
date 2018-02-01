@@ -44,6 +44,9 @@
             make.edges.equalTo(self.view);
         }];
         tableView.allowsMultipleSelectionDuringEditing = YES;
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _myRefreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
@@ -58,7 +61,7 @@
 
 - (void)refresh{
     BOOL hasData = [self findLocalFile];
-    [self.view configBlankPage:EaseBlankPageTypeView hasData:hasData hasError:NO reloadButtonBlock:nil];
+    [self.view configBlankPage:EaseBlankPageTypeFile hasData:hasData hasError:NO reloadButtonBlock:nil];
     if (!hasData) {
         [self.myRefreshControl endRefreshing];
         return;

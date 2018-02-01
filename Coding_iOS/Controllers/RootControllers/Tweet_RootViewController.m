@@ -99,9 +99,9 @@
 //                              [self refreshFirst];
 //                          }];
     
-    UIBarButtonItem *leftBarItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"hot_topic_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(hotTopicBtnClicked:)];
-
-    [self.parentViewController.navigationItem setLeftBarButtonItem:leftBarItem animated:NO];
+//    UIBarButtonItem *leftBarItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"hot_topic_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(hotTopicBtnClicked:)];
+//
+//    [self.parentViewController.navigationItem setLeftBarButtonItem:leftBarItem animated:NO];
     
     _tweetsDict = [[NSMutableDictionary alloc] initWithCapacity:4];
 
@@ -128,6 +128,9 @@
             UIEdgeInsets insets = UIEdgeInsetsMake(0, 0, CGRectGetHeight(self.rdv_tabBarController.tabBar.frame), 0);
             tableView.contentInset = insets;
         }
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _refreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
@@ -148,14 +151,7 @@
 
 - (void)viewDidAppear:(BOOL)animated{
     [super viewDidAppear:animated];
-    
-    UIButton *leftItemView = (UIButton *)self.parentViewController.navigationItem.leftBarButtonItem.customView;
-    if ([[FunctionTipsManager shareManager] needToTip:kFunctionTipStr_Search]) {
-        [leftItemView addBadgePoint:4 withPointPosition:CGPointMake(25, 0)];
-    }
-    
     [self refreshFirst];
-
     //    键盘
     if (_myMsgInputView) {
         [_myMsgInputView prepareToShow];
@@ -205,7 +201,7 @@
 - (void)messageInputView:(UIMessageInputView *)inputView heightToBottomChenged:(CGFloat)heightToBottom{
     [UIView animateWithDuration:0.25 delay:0.0f options:UIViewAnimationOptionTransitionFlipFromBottom animations:^{
         UIEdgeInsets contentInsets= UIEdgeInsetsMake(0.0, 0.0, heightToBottom, 0.0);;
-        CGFloat msgInputY = kScreen_Height - heightToBottom - 64;
+        CGFloat msgInputY = kScreen_Height - heightToBottom - (44 + kSafeArea_Top);
         
         self.myTableView.contentInset = contentInsets;
         
@@ -246,9 +242,13 @@
                     }
                     [self.myTableView reloadData];
                 }
-                [weakSelf.view configBlankPage:EaseBlankPageTypeTweet hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
+                [weakSelf.view configBlankPage:EaseBlankPageTypeTweetAction hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
                     [weakSelf sendRequest];
                 }];
+                //空白页按钮事件
+                weakSelf.view.blankPageView.clickButtonBlock=^(EaseBlankPageType curType) {
+                    [weakSelf sendTweet];
+                };
             }
 
         }];
@@ -267,9 +267,13 @@
             if (outTweetsIndex == weakSelf.curIndex) {
                 [weakSelf.myTableView reloadData];
             }
-            [weakSelf.view configBlankPage:EaseBlankPageTypeTweet hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
+            [weakSelf.view configBlankPage:EaseBlankPageTypeTweetAction hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
                 [weakSelf sendRequest];
             }];
+            //空白页按钮事件
+            weakSelf.view.blankPageView.clickButtonBlock=^(EaseBlankPageType curType) {
+                [weakSelf sendTweet];
+            };
         }
     }];
 }
@@ -312,9 +316,14 @@
         [self refresh];
     }
     if (!curTweets.isLoading) {
-        [self.view configBlankPage:EaseBlankPageTypeTweet hasData:(curTweets.list.count > 0) hasError:NO reloadButtonBlock:^(id sender) {
-            [self sendRequest];
+        __weak typeof(self) weakSelf = self;
+        [self.view configBlankPage:EaseBlankPageTypeTweetAction hasData:(curTweets.list.count > 0) hasError:NO reloadButtonBlock:^(id sender) {
+            [weakSelf sendRequest];
         }];
+        //空白页按钮事件
+        self.view.blankPageView.clickButtonBlock=^(EaseBlankPageType curType) {
+            [weakSelf sendTweet];
+        };
     }
 }
 
@@ -352,9 +361,13 @@
             [weakSelf.myTableView reloadData];
             weakSelf.myTableView.showsInfiniteScrolling = curTweets.canLoadMore;
         }
-        [weakSelf.view configBlankPage:EaseBlankPageTypeTweet hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
+        [weakSelf.view configBlankPage:EaseBlankPageTypeTweetAction hasData:(curTweets.list.count > 0) hasError:(error != nil) reloadButtonBlock:^(id sender) {
             [weakSelf sendRequest];
         }];
+        //空白页按钮事件
+        weakSelf.view.blankPageView.clickButtonBlock=^(EaseBlankPageType curType) {
+            [weakSelf sendTweet];
+        };
     }];
 }
 
@@ -469,9 +482,13 @@
         Tweets *curTweets = [weakSelf.tweetsDict objectForKey:[NSNumber numberWithInteger:weakSelf.curIndex]];
         [curTweets.list removeObject:toDeleteTweet];
         [weakSelf.myTableView reloadData];
-        [weakSelf.view configBlankPage:EaseBlankPageTypeTweet hasData:(curTweets.list.count > 0) hasError:NO reloadButtonBlock:^(id sender) {
+        [weakSelf.view configBlankPage:EaseBlankPageTypeTweetAction hasData:(curTweets.list.count > 0) hasError:NO reloadButtonBlock:^(id sender) {
             [weakSelf sendRequest];
         }];
+        //空白页按钮事件
+        weakSelf.view.blankPageView.clickButtonBlock=^(EaseBlankPageType curType) {
+            [weakSelf sendTweet];
+        };
     };
     [self.navigationController pushViewController:vc animated:YES];
 }

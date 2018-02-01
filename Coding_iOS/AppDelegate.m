@@ -28,13 +28,14 @@
 #import "PasswordViewController.h"
 #import "IntroductionViewController.h"
 #import "TweetSendViewController.h"
+#import "ProjectToChooseListViewController.h"
+#import "OTPListViewController.h"
 
 #import "FunctionIntroManager.h"
-#import <UMengSocial/UMSocial.h>
-#import <UMengSocial/UMSocialWechatHandler.h>
-#import <UMengSocial/UMSocialQQHandler.h>
 #import <evernote-cloud-sdk-ios/ENSDK/ENSDK.h>
-#import "UMSocialSinaSSOHandler.h"
+#import "Coding_NetAPIManager.h"
+#import "EADeviceToServerLog.h"
+#import <UMSocialCore/UMSocialCore.h>
 
 #import "Tweet.h"
 #import "sys/utsname.h"
@@ -56,21 +57,16 @@
         UIUserNotificationSettings *userSettings = [UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeBadge|UIUserNotificationTypeSound|UIUserNotificationTypeAlert
                                                                                      categories:[NSSet setWithObject:categorys]];
         [[UIApplication sharedApplication] registerUserNotificationSettings:userSettings];
-        [[UIApplication sharedApplication] registerForRemoteNotifications];
 #endif
     }
 }
 
 #pragma mark UserAgent
 - (void)registerUserAgent{
-    struct utsname systemInfo;
-    uname(&systemInfo);
-    NSString *deviceString = [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding];
-    NSString *userAgent = [NSString stringWithFormat:@"%@/%@ (%@; iOS %@; Scale/%0.2f)", [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleExecutableKey] ?: [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleIdentifierKey], (__bridge id)CFBundleGetValueForInfoDictionaryKey(CFBundleGetMainBundle(), kCFBundleVersionKey) ?: [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleVersionKey], deviceString, [[UIDevice currentDevice] systemVersion], ([[UIScreen mainScreen] respondsToSelector:@selector(scale)] ? [[UIScreen mainScreen] scale] : 1.0f)];
+    NSString *userAgent = [NSString userAgentStr];
     NSDictionary *dictionary = @{@"UserAgent" : userAgent};//User-Agent
     [[NSUserDefaults standardUserDefaults] registerDefaults:dictionary];
 }
-
 
 #pragma lifeCycle
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
@@ -113,7 +109,6 @@
 //    [[RRFPSBar sharedInstance] setShowsAverage:YES];
 //    [[RRFPSBar sharedInstance] setHidden:NO];
 #endif
-    
     return YES;
 }
 
@@ -126,30 +121,17 @@
     }
     
     //    UMENG 统计
-    [MobClick startWithAppkey:kUmeng_AppKey reportPolicy:BATCH channelId:nil];
+    UMConfigInstance.appKey = kUmeng_AppKey;
+    [MobClick startWithConfigure:UMConfigInstance];
     
-    //    UMENG Social Account
-    [UMSocialData setAppKey:kUmeng_AppKey];
-    [UMSocialWechatHandler setWXAppId:kSocial_WX_ID appSecret:kSocial_WX_Secret url:[NSObject baseURLStr]];
-    [UMSocialQQHandler setQQWithAppId:kSocial_QQ_ID appKey:kSocial_QQ_Secret url:[NSObject baseURLStr]];
+    //UMSocialManager 第三方登录
+    [[UMSocialManager defaultManager] openLog:YES];
+    [UMSocialGlobal shareInstance].isUsingHttpsWhenShareContent = NO;
+    [[UMSocialManager defaultManager] setUmSocialAppkey:kUmeng_AppKey];
+    [[UMSocialManager defaultManager] setPlaform:UMSocialPlatformType_WechatSession appKey:kSocial_WX_ID appSecret:kSocial_WX_Secret redirectURL:nil];
+    [[UMSocialManager defaultManager] setPlaform:UMSocialPlatformType_QQ appKey:kSocial_QQ_ID  appSecret:kSocial_QQ_Secret redirectURL:nil];
+    [[UMSocialManager defaultManager] setPlaform:UMSocialPlatformType_Sina appKey:kSocial_Sina_ID  appSecret:kSocial_Sina_Secret redirectURL:kSocial_Sina_RedirectURL];
     [ENSession setSharedSessionConsumerKey:kSocial_EN_Key consumerSecret:kSocial_EN_Secret optionalHost:nil];
-    [UMSocialSinaSSOHandler openNewSinaSSOWithRedirectURL:kSocial_Sina_RedirectURL];
-
-    //    UMENG Social Config
-    [UMSocialConfig setFollowWeiboUids:@{UMShareToSina : kSocial_Sina_OfficailAccount}];//设置默认关注官方账号
-    [UMSocialConfig setFinishToastIsHidden:YES position:UMSocialiToastPositionCenter];
-    [UMSocialConfig setNavigationBarConfig:^(UINavigationBar *bar, UIButton *closeButton, UIButton *backButton, UIButton *postButton, UIButton *refreshButton, UINavigationItem *navigationItem) {
-        if (bar) {
-            [bar setBackgroundImage:[UIImage imageWithColor:kColorNavBG] forBarMetrics:UIBarMetricsDefault];
-        }
-        if (navigationItem) {
-            if ([[navigationItem titleView] isKindOfClass:[UILabel class]]) {
-                UILabel *titleL = (UILabel *)[navigationItem titleView];
-                titleL.font = [UIFont boldSystemFontOfSize:kNavTitleFontSize];
-                titleL.textColor = [UIColor whiteColor];
-            }
-        }
-    }];
     
     //    信鸽推送
     [XGPush startApp:kXGPush_Id appKey:kXGPush_Key];
@@ -158,7 +140,7 @@
     @weakify(self);
     void (^successCallback)(void) = ^(void){
         //如果变成需要注册状态
-        if(![XGPush isUnRegisterStatus] && [Login isLogin]){
+        if([XGPush isUnRegisterStatus] && [Login isLogin]){
             @strongify(self);
             [self registerPush];
         }
@@ -205,6 +187,8 @@
 #pragma clang diagnostic pop
         }
     }
+    //    Coding 报告
+    [[EADeviceToServerLog shareManager] tryToStart];
 }
 
 - (void)applicationWillTerminate:(UIApplication *)application
@@ -212,6 +196,23 @@
     // Saves changes in the application's managed object context before the application terminates.
     [self saveContext];
 }
+
+#pragma mark Universal Links
+
+- (BOOL)application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void(^)(NSArray * __nullable restorableObjects))restorationHandler{
+    if ([userActivity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb]) {
+        UIViewController *vc = [BaseViewController analyseVCFromLinkStr:userActivity.webpageURL.absoluteString];
+        if (vc) {
+            [BaseViewController presentVC:vc];
+        }
+//        [BaseViewController presentLinkStr:userActivity.webpageURL.absoluteString];
+    }else{
+        [[UIApplication sharedApplication] openURL:userActivity.webpageURL];
+    }
+    return YES;
+}
+
+
 #pragma mark - XGPush Message
 - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken
 {
@@ -224,6 +225,15 @@
     DebugLog(@"didReceiveRemoteNotification-userInfo:-----\n%@", userInfo);
     [XGPush handleReceiveNotification:userInfo];
     [BaseViewController handleNotificationInfo:userInfo applicationState:[application applicationState]];
+}
+
+- (void)application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error{
+    DebugLog(@"%@", error);
+}
+
+- (void)application:(UIApplication *)application didRegisterUserNotificationSettings:(UIUserNotificationSettings *)notificationSettings{
+    DebugLog(@"%@", notificationSettings);
+    [application registerForRemoteNotifications];
 }
 
 #pragma mark - Methods Private
@@ -247,7 +257,7 @@
 - (void)customizeInterface {
     //设置Nav的背景色和title色
     UINavigationBar *navigationBarAppearance = [UINavigationBar appearance];
-    [navigationBarAppearance setBackgroundImage:[UIImage imageWithColor:[NSObject baseURLStrIsProduction]? kColorNavBG: kColorBrandGreen] forBarMetrics:UIBarMetricsDefault];
+    [navigationBarAppearance setBackgroundImage:[UIImage imageWithColor:[NSObject baseURLStrIsProduction]? kColorNavBG: kColorActionYellow] forBarMetrics:UIBarMetricsDefault];
     [navigationBarAppearance setTintColor:kColorBrandGreen];//返回按钮的箭头颜色
     NSDictionary *textAttributes = @{
                                      NSFontAttributeName: [UIFont systemFontOfSize:kNavTitleFontSize],
@@ -265,7 +275,9 @@
     DebugLog(@"path: %@, params: %@", [url path], [url queryParams]);
     if ([url.absoluteString hasPrefix:kCodingAppScheme]) {
         NSDictionary *queryParams = [url queryParams];
-        if (queryParams[@"email"] && queryParams[@"key"]) {//重置密码
+        if ([url.host isEqualToString:@"safepay"]) {//支付宝支付
+            [self p_handlePayURL:url];
+        }else if (queryParams[@"email"] && queryParams[@"key"]) {//重置密码
             [self showPasswordWithURL:url];
         }else if ([queryParams[@"type"] isEqualToString:@"tweet"]){//发冒泡
             if ([Login isLogin]) {
@@ -276,11 +288,20 @@
         }else{//一般模式解析网页
             [BaseViewController presentLinkStr:url.absoluteString];
         }
-        return YES;
+    }else if ([url.scheme isEqualToString:kSocial_WX_ID] && [url.host isEqualToString:@"pay"]){//微信支付
+        [self p_handlePayURL:url];
     }else if ([url.absoluteString hasPrefix:@"en-:"]){
         return [[ENSession sharedSession] handleOpenURL:url];
     }else{
-        return  [UMSocialSnsService handleOpenURL:url];
+        return [[UMSocialManager defaultManager] handleOpenURL:url sourceApplication:sourceApplication annotation:annotation];
+    }
+    return YES;
+}
+
+- (void)p_handlePayURL:(NSURL *)url{
+    UIViewController *vc = [BaseViewController presentingVC];
+    if ([vc respondsToSelector:@selector(handlePayURL:)]) {
+        [vc performSelector:@selector(handlePayURL:) withObject:url];
     }
 }
 
@@ -423,4 +444,48 @@
     return [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] lastObject];
 }
 
+#pragma mark 3D Touch
+- (void)application:(UIApplication *)application performActionForShortcutItem:(UIApplicationShortcutItem *)shortcutItem completionHandler:(void(^)(BOOL succeeded))completionHandler{
+    if ([shortcutItem.type isEqualToString:@"shortcut_2FA"]){
+        OTPListViewController *vc = [OTPListViewController new];
+        [BaseViewController presentVC:vc];
+    }else if (![Login isLogin]) {
+        UIViewController *presentingVC = [BaseViewController presentingVC];
+        if (![presentingVC isKindOfClass:[LoginViewController class]]) {
+            LoginViewController *vc = [[LoginViewController alloc] init];
+            vc.showDismissButton = YES;
+            UINavigationController *nav = [[BaseNavigationController alloc] initWithRootViewController:vc];
+            [presentingVC presentViewController:nav animated:YES completion:nil];
+        }
+    }else{
+        if ([kKeyWindow.rootViewController isKindOfClass:[RootTabViewController class]]) {
+            RootTabViewController *vc = (RootTabViewController *)kKeyWindow.rootViewController;
+            vc.selectedIndex = ([shortcutItem.type isEqualToString:@"shortcut_task"]? 1:
+                                2);
+        }
+        if ([shortcutItem.type isEqualToString:@"shortcut_task"]) {
+            ProjectToChooseListViewController *chooseVC = [[ProjectToChooseListViewController alloc] init];
+            [BaseViewController goToVC:chooseVC];
+        }else if ([shortcutItem.type isEqualToString:@"shortcut_tweet"]){
+            TweetSendViewController *vc = [[TweetSendViewController alloc] init];
+            vc.sendNextTweet = ^(Tweet *nextTweet){
+                [nextTweet saveSendData];//发送前保存草稿
+                [[Coding_NetAPIManager sharedManager] request_Tweet_DoTweet_WithObj:nextTweet andBlock:^(id data, NSError *error) {
+                    if (data) {
+                        if ([[BaseViewController presentingVC] respondsToSelector:NSSelectorFromString(@"refresh")]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                            [[BaseViewController presentingVC] performSelector:NSSelectorFromString(@"refresh")];
+#pragma clang diagnostic pop
+ 
+                        }
+                        [Tweet deleteSendData];//发送成功后删除草稿
+                    }
+                }];
+            };
+            [BaseViewController presentVC:vc];
+        }
+    }
+    completionHandler(YES);
+}
 @end

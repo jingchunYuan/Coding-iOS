@@ -18,7 +18,8 @@
     struct utsname systemInfo;
     uname(&systemInfo);
     NSString *deviceString = [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding];
-    return [NSString stringWithFormat:@"%@/%@ (%@; iOS %@; Scale/%0.2f)", [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleExecutableKey] ?: [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleIdentifierKey], (__bridge id)CFBundleGetValueForInfoDictionaryKey(CFBundleGetMainBundle(), kCFBundleVersionKey) ?: [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleVersionKey], deviceString, [[UIDevice currentDevice] systemVersion], ([[UIScreen mainScreen] respondsToSelector:@selector(scale)] ? [[UIScreen mainScreen] scale] : 1.0f)];
+    NSString *userAgent = [NSString stringWithFormat:@"%@/%@ (%@; iOS %@; Scale/%0.2f)", [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleExecutableKey] ?: [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleIdentifierKey], (__bridge id)CFBundleGetValueForInfoDictionaryKey(CFBundleGetMainBundle(), kCFBundleVersionKey) ?: [[[NSBundle mainBundle] infoDictionary] objectForKey:(__bridge NSString *)kCFBundleVersionKey], deviceString, [[UIDevice currentDevice] systemVersion], ([[UIScreen mainScreen] respondsToSelector:@selector(scale)] ? [[UIScreen mainScreen] scale] : 1.0f)];
+    return userAgent;//Coding_iOS/4.0.8.201611041630 (x86_64; iOS 10.1; Scale/2.00)
 }
 
 - (NSString *)URLEncoding
@@ -78,7 +79,7 @@
         return nil;
     }else{
         if (![self hasPrefix:@"http"]) {
-            urlStr = [NSString stringWithFormat:@"%@%@", [NSObject baseURLStr], self];
+            urlStr = [NSString stringWithFormat:@"%@%@", [NSObject baseURLStr], [self hasPrefix:@"/"]? [self substringFromIndex:1]: self];
         }else{
             urlStr = self;
         }
@@ -96,11 +97,14 @@
     }else{
         if (![self hasPrefix:@"http"]) {
             NSString *imageName = [self stringByMatching:@"/static/fruit_avatar/([a-zA-Z0-9\\-._]+)$" capture:1];
+            if (!imageName) {
+                imageName = [self stringByMatching:@"/static/project_icon/([a-zA-Z0-9\\-._]+)$" capture:1];
+            }
             if (imageName && imageName.length > 0) {
                 urlStr = [NSString stringWithFormat:@"http://coding-net-avatar.qiniudn.com/%@?imageMogr2/auto-orient/thumbnail/!%.0fx%.0fr", imageName, width, width];
                 canCrop = YES;
             }else{
-                urlStr = [NSString stringWithFormat:@"%@%@", [NSObject baseURLStr], self];
+                urlStr = [NSString stringWithFormat:@"%@%@", [NSObject baseURLStr], [self hasPrefix:@"/"]? [self substringFromIndex:1]: self];
             }
         }else{
             urlStr = self;
@@ -157,9 +161,12 @@
     if (self.length <= 0) {
         return resultSize;
     }
+    NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
+    style.lineBreakMode = NSLineBreakByWordWrapping;
     resultSize = [self boundingRectWithSize:CGSizeMake(floor(size.width), floor(size.height))//用相对小的 width 去计算 height / 小 heigth 算 width
                                     options:(NSStringDrawingUsesFontLeading | NSStringDrawingUsesLineFragmentOrigin)
-                                 attributes:@{NSFontAttributeName: font}
+                                 attributes:@{NSFontAttributeName: font,
+                                              NSParagraphStyleAttributeName: style}
                                     context:nil].size;
     resultSize = CGSizeMake(floor(resultSize.width + 1), floor(resultSize.height + 1));//上面用的小 width（height） 来计算了，这里要 +1
     return resultSize;
@@ -215,69 +222,81 @@
     return returnValue;
 }
 #pragma mark emotion_monkey
-+ (NSDictionary *)emotion_monkey_dict {
-    static NSDictionary *_emotion_monkey_dict;
++ (NSDictionary *)emotion_specail_dict {
+    static NSDictionary *_emotion_specail_dict;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        _emotion_monkey_dict = @{
+        _emotion_specail_dict = @{
                                  //猴子大表情
-                                 @"coding_emoji_01": @"哈哈",
-                                 @"coding_emoji_02": @"吐",
-                                 @"coding_emoji_03": @"压力山大",
-                                 @"coding_emoji_04": @"忧伤",
-                                 @"coding_emoji_05": @"坏人",
-                                 @"coding_emoji_06": @"酷",
-                                 @"coding_emoji_07": @"哼",
-                                 @"coding_emoji_08": @"你咬我啊",
-                                 @"coding_emoji_09": @"内急",
-                                 @"coding_emoji_10": @"32个赞",
-                                 @"coding_emoji_11": @"加油",
-                                 @"coding_emoji_12": @"闭嘴",
-                                 @"coding_emoji_13": @"wow",
-                                 @"coding_emoji_14": @"泪流成河",
-                                 @"coding_emoji_15": @"NO!",
-                                 @"coding_emoji_16": @"疑问",
-                                 @"coding_emoji_17": @"耶",
-                                 @"coding_emoji_18": @"生日快乐",
-                                 @"coding_emoji_19": @"求包养",
-                                 @"coding_emoji_20": @"吹泡泡",
-                                 @"coding_emoji_21": @"睡觉",
-                                 @"coding_emoji_22": @"惊讶",
-                                 @"coding_emoji_23": @"Hi",
-                                 @"coding_emoji_24": @"打发点咯",
-                                 @"coding_emoji_25": @"呵呵",
-                                 @"coding_emoji_26": @"喷血",
-                                 @"coding_emoji_27": @"Bug",
-                                 @"coding_emoji_28": @"听音乐",
-                                 @"coding_emoji_29": @"垒码",
-                                 @"coding_emoji_30": @"我打你哦",
-                                 @"coding_emoji_31": @"顶足球",
-                                 @"coding_emoji_32": @"放毒气",
-                                 @"coding_emoji_33": @"表白",
-                                 @"coding_emoji_34": @"抓瓢虫",
-                                 @"coding_emoji_35": @"下班",
-                                 @"coding_emoji_36": @"冒泡",
-                                 @"coding_emoji_38": @"2015",
-                                 @"coding_emoji_39": @"拜年",
-                                 @"coding_emoji_40": @"发红包",
-                                 @"coding_emoji_41": @"放鞭炮",
-                                 @"coding_emoji_42": @"求红包",
-                                 @"coding_emoji_43": @"新年快乐",
+                                 @"coding_emoji_01": @" :哈哈: ",
+                                 @"coding_emoji_02": @" :吐: ",
+                                 @"coding_emoji_03": @" :压力山大: ",
+                                 @"coding_emoji_04": @" :忧伤: ",
+                                 @"coding_emoji_05": @" :坏人: ",
+                                 @"coding_emoji_06": @" :酷: ",
+                                 @"coding_emoji_07": @" :哼: ",
+                                 @"coding_emoji_08": @" :你咬我啊: ",
+                                 @"coding_emoji_09": @" :内急: ",
+                                 @"coding_emoji_10": @" :32个赞: ",
+                                 @"coding_emoji_11": @" :加油: ",
+                                 @"coding_emoji_12": @" :闭嘴: ",
+                                 @"coding_emoji_13": @" :wow: ",
+                                 @"coding_emoji_14": @" :泪流成河: ",
+                                 @"coding_emoji_15": @" :NO!: ",
+                                 @"coding_emoji_16": @" :疑问: ",
+                                 @"coding_emoji_17": @" :耶: ",
+                                 @"coding_emoji_18": @" :生日快乐: ",
+                                 @"coding_emoji_19": @" :求包养: ",
+                                 @"coding_emoji_20": @" :吹泡泡: ",
+                                 @"coding_emoji_21": @" :睡觉: ",
+                                 @"coding_emoji_22": @" :惊讶: ",
+                                 @"coding_emoji_23": @" :Hi: ",
+                                 @"coding_emoji_24": @" :打发点咯: ",
+                                 @"coding_emoji_25": @" :呵呵: ",
+                                 @"coding_emoji_26": @" :喷血: ",
+                                 @"coding_emoji_27": @" :Bug: ",
+                                 @"coding_emoji_28": @" :听音乐: ",
+                                 @"coding_emoji_29": @" :垒码: ",
+                                 @"coding_emoji_30": @" :我打你哦: ",
+                                 @"coding_emoji_31": @" :顶足球: ",
+                                 @"coding_emoji_32": @" :放毒气: ",
+                                 @"coding_emoji_33": @" :表白: ",
+                                 @"coding_emoji_34": @" :抓瓢虫: ",
+                                 @"coding_emoji_35": @" :下班: ",
+                                 @"coding_emoji_36": @" :冒泡: ",
+                                 @"coding_emoji_38": @" :2015: ",
+                                 @"coding_emoji_39": @" :拜年: ",
+                                 @"coding_emoji_40": @" :发红包: ",
+                                 @"coding_emoji_41": @" :放鞭炮: ",
+                                 @"coding_emoji_42": @" :求红包: ",
+                                 @"coding_emoji_43": @" :新年快乐: ",
                                  //猴子大表情 Gif
-                                 @"coding_emoji_gif_01": @"奔月",
-                                 @"coding_emoji_gif_02": @"吃月饼",
-                                 @"coding_emoji_gif_03": @"捞月",
-                                 @"coding_emoji_gif_04": @"打招呼",
-                                 @"coding_emoji_gif_05": @"悠闲",
-                                 @"coding_emoji_gif_06": @"赏月",
-                                 @"coding_emoji_gif_07": @"中秋快乐",
-                                 @"coding_emoji_gif_08": @"爬爬",
+                                 @"coding_emoji_gif_01": @" :奔月: ",
+                                 @"coding_emoji_gif_02": @" :吃月饼: ",
+                                 @"coding_emoji_gif_03": @" :捞月: ",
+                                 @"coding_emoji_gif_04": @" :打招呼: ",
+                                 @"coding_emoji_gif_05": @" :悠闲: ",
+                                 @"coding_emoji_gif_06": @" :赏月: ",
+                                 @"coding_emoji_gif_07": @" :中秋快乐: ",
+                                 @"coding_emoji_gif_08": @" :爬爬: ",
+                                 //特殊 emoji 字符
+                                 @"0️⃣":	@"0",
+                                 @"1️⃣":	@"1",
+                                 @"2️⃣":	@"2",
+                                 @"3️⃣":	@"3",
+                                 @"4️⃣":	@"4",
+                                 @"5️⃣":	@"5",
+                                 @"6️⃣":	@"6",
+                                 @"7️⃣":	@"7",
+                                 @"8️⃣":	@"8",
+                                 @"9️⃣":	@"9",
+                                 @"↩️":	@"\n",
                                  };
     });
-    return _emotion_monkey_dict;
+    return _emotion_specail_dict;
 }
-- (NSString *)emotionMonkeyName{
-    return [NSString emotion_monkey_dict][self];
+- (NSString *)emotionSpecailName{
+    return [NSString emotion_specail_dict][self];
 }
 
 + (NSString *)sizeDisplayWithByte:(CGFloat)sizeOfByte{
@@ -355,6 +374,11 @@
     NSString *gkRegex = @"[A-Z0-9a-z-_]{3,32}";
     NSPredicate *gkTest = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", gkRegex];
     return [gkTest evaluateWithObject:self];
+}
+- (BOOL)isFileName{
+    NSString *phoneRegex = @"[a-zA-Z0-9\\u4e00-\\u9fa5\\./_-]+$";
+    NSPredicate *phoneTest = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", phoneRegex];
+    return [phoneTest evaluateWithObject:self];
 }
 
 

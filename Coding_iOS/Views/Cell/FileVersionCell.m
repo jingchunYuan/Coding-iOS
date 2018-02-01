@@ -156,7 +156,7 @@
             stateImageName = @"icon_file_state_download";
             break;
     }
-    [self setBackgroundColor:(state == DownloadStateDownloaded)? [UIColor colorWithHexString:@"0xf1fcf6"]:[UIColor clearColor]];
+    [self setBackgroundColor:(state == DownloadStateDownloaded)? [UIColor colorWithHexString:@"0x81BCFF" andAlpha:.1]:[UIColor whiteColor]];
     [self.progressView setHidden:!(state == DownloadStateDownloading || state == DownloadStatePausing)];
     
     [_stateButton setImage:[UIImage imageNamed:stateImageName] forState:UIControlStateNormal];
@@ -164,7 +164,7 @@
 
 - (void)clickedByUser{
     Coding_FileManager *manager = [Coding_FileManager sharedManager];
-    NSURL *fileUrl = [Coding_FileManager diskDownloadUrlForKey:_curVersion.storage_key];
+    NSURL *fileUrl = _curVersion.diskFileUrl;
     if (fileUrl) {//已经下载到本地了
         if (_showDiskFileBlock) {
             _showDiskFileBlock(fileUrl, _curVersion);

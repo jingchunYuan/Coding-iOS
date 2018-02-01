@@ -59,6 +59,16 @@ static dispatch_once_t onceToken;
     if (!aPath || aPath.length <= 0) {
         return;
     }
+    //CSRF - 跨站请求伪造
+    NSHTTPCookie *_CSRF = nil;
+    for (NSHTTPCookie *tempC in [[NSHTTPCookieStorage sharedHTTPCookieStorage] cookies]) {
+        if ([tempC.name isEqualToString:@"XSRF-TOKEN"]) {
+            _CSRF = tempC;
+        }
+    }
+    if (_CSRF) {
+        [self.requestSerializer setValue:_CSRF.value forHTTPHeaderField:@"X-XSRF-TOKEN"];
+    }
     //log请求数据
     DebugLog(@"\n===========request===========\n%@\n%@:\n%@", kNetworkMethodName[method], aPath, params);
     aPath = [aPath stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
@@ -238,6 +248,43 @@ static dispatch_once_t onceToken;
 
     AFHTTPRequestOperation *operation = [self POST:path parameters:nil constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
         [formData appendPartWithFileData:data name:name fileName:fileName mimeType:@"image/jpeg"];
+    } success:^(AFHTTPRequestOperation *operation, id responseObject) {
+        DebugLog(@"Success: %@ ***** %@", operation.responseString, responseObject);
+        id error = [self handleResponse:responseObject];
+        if (error && failure) {
+            failure(operation, error);
+        }else{
+            success(operation, responseObject);
+        }
+    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        DebugLog(@"Error: %@ ***** %@", operation.responseString, error);
+        if (failure) {
+            failure(operation, error);
+        }
+    }];
+    
+    [operation setUploadProgressBlock:^(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite) {
+        CGFloat progressValue = (float)totalBytesWritten/(float)totalBytesExpectedToWrite;
+        if (progress) {
+            progress(progressValue);
+        }
+    }];
+    [operation start];
+}
+
+- (void)uploadAssets:(NSArray *)assets
+                path:(NSString *)path
+                name:(NSString *)name
+              params:(NSDictionary *)params
+        successBlock:(void (^)(AFHTTPRequestOperation *operation, id responseObject))success
+        failureBlock:(void (^)(AFHTTPRequestOperation *operation, NSError *error))failure
+       progerssBlock:(void (^)(CGFloat progressValue))progress{
+    AFHTTPRequestOperation *operation = [self POST:path parameters:params constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
+        for (PHAsset *asset in assets) {
+            NSString *fileName = asset.fileName;;
+            NSData *data = [asset.loadImage dataForCodingUpload];
+            [formData appendPartWithFileData:data name:name fileName:fileName mimeType:@"image/jpeg"];
+        }
     } success:^(AFHTTPRequestOperation *operation, id responseObject) {
         DebugLog(@"Success: %@ ***** %@", operation.responseString, responseObject);
         id error = [self handleResponse:responseObject];

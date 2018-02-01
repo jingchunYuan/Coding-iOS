@@ -59,6 +59,9 @@ static const NSTimeInterval kPollTimeInterval = 3.0;
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
 //    _refreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
@@ -155,7 +158,7 @@ static const NSTimeInterval kPollTimeInterval = 3.0;
     static BOOL keyboard_is_down = YES;
     static CGPoint keyboard_down_ContentOffset;
     static CGFloat keyboard_down_InputViewHeight;
-    if (heightToBottom > CGRectGetHeight(inputView.frame)) {
+    if (heightToBottom > [inputView heightWithSafeArea]) {
         if (keyboard_is_down) {
             keyboard_down_ContentOffset = self.myTableView.contentOffset;
             keyboard_down_InputViewHeight = CGRectGetHeight(inputView.frame);
@@ -303,7 +306,7 @@ static const NSTimeInterval kPollTimeInterval = 3.0;
     if (canDelete) {
         [menuItemArray addObject:@"删除"];
     }
-    if (curMsg.sendStatus == PrivateMessageStatusSendSucess) {
+    if (curMsg.sendStatus == PrivateMessageStatusSendSucess && ![curMsg isVoice]) {
         [menuItemArray addObject:@"转发"];
     }
 
@@ -435,12 +438,11 @@ static const NSTimeInterval kPollTimeInterval = 3.0;
                 return;
             }
             QBImagePickerController *imagePickerController = [[QBImagePickerController alloc] init];
-            imagePickerController.filterType = QBImagePickerControllerFilterTypePhotos;
+            imagePickerController.mediaType = QBImagePickerMediaTypeImage;
             imagePickerController.delegate = self;
             imagePickerController.allowsMultipleSelection = YES;
             imagePickerController.maximumNumberOfSelection = 6;
-            UINavigationController *navigationController = [[BaseNavigationController alloc] initWithRootViewController:imagePickerController];
-            [self presentViewController:navigationController animated:YES completion:NULL];
+            [self presentViewController:imagePickerController animated:YES completion:NULL];
         }
             break;
         case 1:
@@ -477,16 +479,9 @@ static const NSTimeInterval kPollTimeInterval = 3.0;
 }
 
 #pragma mark QBImagePickerControllerDelegate
-- (void)qb_imagePickerController:(QBImagePickerController *)imagePickerController didSelectAssets:(NSArray *)assets{
-    for (ALAsset *assetItem in assets) {
-        @weakify(self);
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            UIImage *highQualityImage = [UIImage fullScreenImageALAsset:assetItem];
-            dispatch_async(dispatch_get_main_queue(), ^{
-                @strongify(self);
-                [self sendPrivateMessage:highQualityImage];
-            });
-        });
+- (void)qb_imagePickerController:(QBImagePickerController *)imagePickerController didFinishPickingAssets:(NSArray *)assets{
+    for (PHAsset *assetItem in assets) {
+        [self sendPrivateMessage:assetItem.loadImage];
     }
     [self dismissViewControllerAnimated:YES completion:nil];
 }

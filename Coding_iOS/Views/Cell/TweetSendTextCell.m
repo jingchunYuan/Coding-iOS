@@ -104,7 +104,7 @@
         
         UIView  *keyboardToolBar = [[UIView alloc] initWithFrame:CGRectMake(0, CGRectGetHeight(_footerToolBar.frame) - 40, kScreen_Width, 40)];
         [keyboardToolBar addLineUp:YES andDown:NO andColor:kColorDDD];
-        keyboardToolBar.backgroundColor = kColorTableSectionBg;
+        keyboardToolBar.backgroundColor = kColorNavBG;
         if (!_locationButton) {
             _locationButton = [self locationButtonWithStr:nil];
         }
@@ -121,11 +121,6 @@
             
             UIButton *atButton = [self toolButtonWithToolBarFrame:keyboardToolBar.frame index:3 imageStr:@"keyboard_at" andSelecter:@selector(atButtonClicked:)];
             [keyboardToolBar addSubview:atButton];
-            
-            
-            if ([[FunctionTipsManager shareManager] needToTip:kFunctionTipStr_TweetTopic]) {
-                [topicButton addBadgePoint:4 withPointPosition:CGPointMake(27, 7)];
-            }
         }
         
         [_footerToolBar addSubview:keyboardToolBar];
@@ -160,7 +155,7 @@
     [_locationButton setWidth:MIN(kScreen_Width - 30,
                                   35+ [titleStr getWidthWithFont:_locationButton.titleLabel.font constrainedToSize:CGSizeMake(CGFLOAT_MAX, 20)])];
     
-    [_locationButton setTitleColor:[UIColor colorWithHexString:locationStr.length > 0? @"0x3bbd79": @"0x999999"] forState:UIControlStateNormal];
+    [_locationButton setTitleColor:[UIColor colorWithHexString:locationStr.length > 0? @"0x2EBE76": @"0x999999"] forState:UIControlStateNormal];
     [_locationButton setImage:[UIImage imageNamed:locationStr.length > 0? @"icon_locationed": @"icon_not_locationed"] forState:UIControlStateNormal];
     [_locationButton setTitle:titleStr forState:UIControlStateNormal];
     return _locationButton;
@@ -198,13 +193,6 @@
 
 - (void)topicButtonClicked:(id)sender{
     [MobClick event:kUmeng_Event_Request_ActionOfLocal label:@"冒泡_添加_话题"];
-
-    if ([[FunctionTipsManager shareManager] needToTip:kFunctionTipStr_TweetTopic]) {
-        [[FunctionTipsManager shareManager] markTiped:kFunctionTipStr_TweetTopic];
-        UIButton *btnTopic = (UIButton *)sender;
-        [btnTopic removeBadgePoint];
-    }
-    
     @weakify(self);
     [CSTopicCreateVC showATSomeoneWithBlock:^(NSString *topicName) {
         @strongify(self);
@@ -242,7 +230,8 @@
     CGRect keyboardEndFrame = [[userInfo objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     [UIView animateWithDuration:animationDuration delay:0.0f options:[UIView animationOptionsForCurve:animationCurve] animations:^{
         CGFloat keyboardY =  keyboardEndFrame.origin.y;
-        [self.footerToolBar setY:keyboardY- CGRectGetHeight(self.footerToolBar.frame)];
+        CGFloat footerToolBarY = keyboardY- CGRectGetHeight(self.footerToolBar.frame) - ((keyboardY+1 > kScreen_Height)? kSafeArea_Bottom: 0);
+        [self.footerToolBar setY:footerToolBarY];
     } completion:^(BOOL finished) {
     }];
 }
@@ -252,9 +241,8 @@
 - (void)emojiKeyBoardView:(AGEmojiKeyboardView *)emojiKeyBoardView didUseEmoji:(NSString *)emoji {
     NSRange selectedRange = self.tweetContentView.selectedRange;
     
-    NSString *emotion_monkey = [emoji emotionMonkeyName];
+    NSString *emotion_monkey = [emoji emotionSpecailName];
     if (emotion_monkey) {
-        emotion_monkey = [NSString stringWithFormat:@" :%@: ", emotion_monkey];
         self.tweetContentView.text = [self.tweetContentView.text stringByReplacingCharactersInRange:selectedRange withString:emotion_monkey];
         self.tweetContentView.selectedRange = NSMakeRange(selectedRange.location +emotion_monkey.length, 0);
         [self textViewDidChange:self.tweetContentView];
@@ -274,14 +262,10 @@
 }
 
 - (UIImage *)emojiKeyboardView:(AGEmojiKeyboardView *)emojiKeyboardView imageForSelectedCategory:(AGEmojiKeyboardViewCategoryImage)category {
-    UIImage *img;
-    if (category == AGEmojiKeyboardViewCategoryImageEmoji) {
-        img = [UIImage imageNamed:@"keyboard_emotion_emoji"];
-    }else if (category == AGEmojiKeyboardViewCategoryImageMonkey){
-        img = [UIImage imageNamed:@"keyboard_emotion_monkey"];
-    }else{
-        img = [UIImage imageNamed:@"keyboard_emotion_monkey_gif"];
-    }
+    UIImage *img = [UIImage imageNamed:(category == AGEmojiKeyboardViewCategoryImageEmoji? @"keyboard_emotion_emoji":
+                                        category == AGEmojiKeyboardViewCategoryImageMonkey? @"keyboard_emotion_monkey":
+                                        category == AGEmojiKeyboardViewCategoryImageMonkey_Gif? @"keyboard_emotion_monkey_gif":
+                                        @"keyboard_emotion_emoji_code")] ?: [UIImage new];
     return img;
 }
 

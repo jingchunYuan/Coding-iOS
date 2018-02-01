@@ -51,9 +51,10 @@
 {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
-    self.title = @"冒泡详情";
-    [self.navigationItem setRightBarButtonItem:[[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"share_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(rightNavBtnClicked)] animated:NO];
-
+    self.title = self.curTweet.project.name ?: @"冒泡详情";
+    if (![_curTweet isProjectTweet]) {
+        [self.navigationItem setRightBarButtonItem:[[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"share_Nav"] style:UIBarButtonItemStylePlain target:self action:@selector(rightNavBtnClicked)] animated:NO];
+    }
     //    添加myTableView
     _myTableView = ({
         UITableView *tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
@@ -67,6 +68,9 @@
         [tableView mas_makeConstraints:^(MASConstraintMaker *make) {
             make.edges.equalTo(self.view);
         }];
+        tableView.estimatedRowHeight = 0;
+        tableView.estimatedSectionHeaderHeight = 0;
+        tableView.estimatedSectionFooterHeight = 0;
         tableView;
     });
     _refreshControl = [[ODRefreshControl alloc] initInScrollView:self.myTableView];
@@ -76,6 +80,7 @@
     _myMsgInputView = [UIMessageInputView messageInputViewWithType:UIMessageInputViewContentTypeTweet];
     _myMsgInputView.isAlwaysShow = YES;
     _myMsgInputView.delegate = self;
+    _myMsgInputView.curProject = _curProject;
 
     UIEdgeInsets contentInsets = UIEdgeInsetsMake(0.0, 0.0,CGRectGetHeight(_myMsgInputView.frame), 0.0);
     self.myTableView.contentInset = contentInsets;
@@ -154,7 +159,7 @@
 - (void)messageInputView:(UIMessageInputView *)inputView heightToBottomChenged:(CGFloat)heightToBottom{
     [UIView animateWithDuration:0.25 delay:0.0f options:UIViewAnimationOptionTransitionFlipFromBottom animations:^{
         UIEdgeInsets contentInsets= UIEdgeInsetsMake(0.0, 0.0, MAX(CGRectGetHeight(inputView.frame), heightToBottom), 0.0);;
-        CGFloat msgInputY = kScreen_Height - heightToBottom - 64;
+        CGFloat msgInputY = kScreen_Height - heightToBottom - (44 + kSafeArea_Top);
         
         self.myTableView.contentInset = contentInsets;
         self.myTableView.scrollIndicatorInsets = contentInsets;
@@ -175,6 +180,7 @@
         [[Coding_NetAPIManager sharedManager] request_ProjectDetail_WithObj:_curTweet.project andBlock:^(id data, NSError *error) {
             if (data) {
                 weakSelf.curTweet.project = data;
+                weakSelf.title = weakSelf.curTweet.project.name;
                 weakSelf.curTweet.project_id = [(Project *)data id];
                 [weakSelf refreshTweet];
             }else{
@@ -276,9 +282,9 @@
         cell.commentToCommentBlock = ^(Comment *toComment, id sender){
             [self doCommentToComment:toComment sender:sender];
         };
-        [cell.ownerIconView addTapBlock:^(id obj) {
-            [self goToUserInfo:curComment.owner];
-        }];
+//        [cell.ownerIconView addTapBlock:^(id obj) {
+//            [self goToUserInfo:curComment.owner];
+//        }];
         cell.contentLabel.delegate = self;
         [tableView addLineforPlainCell:cell forRowAtIndexPath:indexPath withLeftSpace:kPaddingLeftWidth];
         return cell;
